@@ -36,7 +36,7 @@ screen vtmod_preg_check_pane():
                     vbox:
                         spacing 1
                         text f" - found [preg_count] preg fullbody images." size font_size_small color menu_text_color_valid
-                        text " - keep in mind, doesn't count _slut/_whore varients." size font_size_small color menu_text_color_valid
+                        text " - keep in mind, doesn't count _slut/_whore variants." size font_size_small color menu_text_color_valid
                         text " - you do not have to create all 3, preg_bare is possible." size font_size_small color menu_text_color_valid
 
                     $ pregthird_keys = [key for key in selected_girl_rating.possible_fullbody_images if key.startswith("preg_3rd") and len(selected_girl_rating.possible_fullbody_images[key]) > 0]
@@ -62,4 +62,4 @@ screen vtmod_preg_check_pane():
 
                 else:
                     text "VTMod Negative" size font_size_small color menu_text_color_conflict
-                    text " - There is no preg fullbody images" size font_size_small color menu_text_color_conflict
+                    text " - There are no preg fullbody images" size font_size_small color menu_text_color_conflict

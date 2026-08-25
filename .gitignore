@@ -1,1 +1,4 @@
 *.rpyc
+
+/tests/
+/dev_docs/

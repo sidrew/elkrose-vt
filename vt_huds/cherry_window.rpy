@@ -166,7 +166,7 @@ screen cherry_minimum_window(girl=None, position="center", xoffset=0, yoffset=0,
                             $ oralimg = "_mods/content/elkrose_vt/extra_images/nocondom.png"
                             $ oraltt = "No idea if she uses condoms for oral sex."
                             if girl.player_knows_oral_condom:
-                                if girl.wants_oral_condom:
+                                if vt_condom_now(girl, "oral"):
                                     $ oralimg = "_mods/content/elkrose_vt/extra_images/condom_premium50.png"
                                     $ oraltt =  f"{{color=#ff0000}}Wants Condom for Oral!{{/color}}"
                                 else:
@@ -207,19 +207,12 @@ screen cherry_minimum_window(girl=None, position="center", xoffset=0, yoffset=0,
                             $ bodyimg = "_mods/content/elkrose_vt/extra_images/nocondom.png"
                             $ bodytt = "No idea if she uses condoms for body play."
                             if girl.player_knows_body_condom:
-                                if girl.wants_body_condom:
+                                if vt_condom_now(girl, "body"):
                                     $ bodyimg = "_mods/content/elkrose_vt/extra_images/condom_premium50.png"
                                     $ bodytt =  f"{{color=#ff0000}}Wants Condom for Body!{{/color}}"
                                 else:
                                     $ bodyimg = "_mods/content/elkrose_vt/extra_images/cherries_idle.png"
                                     $ bodytt =  f"{{color={menu_text_color_valid}}}Likes the risk during Body!{{/color}}"
-                                    #will need to figure out the body cum mechanic
-                                    # if girl.oral_cum > 0:
-                                        # $ cumtextfix = "unit"
-                                        # if girl.oral_cum>1:
-                                            # $ cumtextfix = "units"
-                                        # $ bodyimg = "_mods/content/elkrose_vt/extra_images/cumcherries_idle.png"
-                                        # $ bodytt =  f"{{color={menu_text_color_valid}}} Has {girl.oral_cum} of cum on her body!{{/color}}"
                             else:
                                 $ bodytt = "No idea if she wants condom for Body."
                                 $ bodyimg = "_mods/content/elkrose_vt/extra_images/nocondom.png"
@@ -249,7 +242,7 @@ screen cherry_minimum_window(girl=None, position="center", xoffset=0, yoffset=0,
                             $ analimg = "_mods/content/elkrose_vt/extra_images/nocondom.png"
                             $ analtt = "No idea if she uses condoms for anal sex."
                             if girl.player_knows_anal_condom:
-                                if girl.wants_anal_condom:
+                                if vt_condom_now(girl, "anal"):
                                     $ analimg = "_mods/content/elkrose_vt/extra_images/condom_premium50.png"
                                     $ analtt =  f"{{color=#ff0000}}Wants Condom for Anal!{{/color}}"
                                 else:
@@ -290,7 +283,7 @@ screen cherry_minimum_window(girl=None, position="center", xoffset=0, yoffset=0,
                             $ vaginalimg = "_mods/content/elkrose_vt/extra_images/nocondom.png"
                             $ vaginaltt = "No idea if she uses condoms for vaginal sex."
                             if girl.player_knows_vaginal_condom:
-                                if girl.wants_vaginal_condom:
+                                if vt_condom_now(girl, "vaginal"):
                                     $ vaginalimg = "_mods/content/elkrose_vt/extra_images/condom_premium50.png"
                                     $ vaginaltt =  f"{{color=#ff0000}}Wants Condom for Vaginal!{{/color}}"
                                 else:
@@ -512,7 +505,7 @@ screen cherry_window(girl=None, position="center", xoffset=0, yoffset=0, border_
                             $ oralimg = "_mods/content/elkrose_vt/extra_images/nocondom.png"
                             $ oraltt = "No idea if she uses condoms for oral sex."
                             if girl.player_knows_oral_condom:
-                                if girl.wants_oral_condom:
+                                if vt_condom_now(girl, "oral"):
                                     $ oralimg = "_mods/content/elkrose_vt/extra_images/condom_premium50.png"
                                     $ oraltt =  f"{{color=#ff0000}}Wants Condom for Oral!{{/color}}"
                                 else:
@@ -551,19 +544,12 @@ screen cherry_window(girl=None, position="center", xoffset=0, yoffset=0, border_
                             $ bodyimg = "_mods/content/elkrose_vt/extra_images/nocondom.png"
                             $ bodytt = "No idea if she uses condoms for body play."
                             if girl.player_knows_body_condom:
-                                if girl.wants_body_condom:
+                                if vt_condom_now(girl, "body"):
                                     $ bodyimg = "_mods/content/elkrose_vt/extra_images/condom_premium50.png"
                                     $ bodytt =  f"{{color=#ff0000}}Wants Condom for Body!{{/color}}"
                                 else:
                                     $ bodyimg = "_mods/content/elkrose_vt/extra_images/cherries_idle.png"
                                     $ bodytt =  f"{{color={menu_text_color_valid}}}Likes the risk during Body!{{/color}}"
-                                    #will need to figure out the body cum mechanic
-                                    # if girl.oral_cum > 0:
-                                        # $ cumtextfix = "unit"
-                                        # if girl.oral_cum>1:
-                                            # $ cumtextfix = "units"
-                                        # $ bodyimg = "_mods/content/elkrose_vt/extra_images/cumcherries_idle.png"
-                                        # $ bodytt =  f"{{color={menu_text_color_valid}}} Has {girl.oral_cum} of cum on her body!{{/color}}"
                             else:
                                 $ bodytt = "No idea if she wants condom for Body."
                                 $ bodyimg = "_mods/content/elkrose_vt/extra_images/nocondom.png"
@@ -591,7 +577,7 @@ screen cherry_window(girl=None, position="center", xoffset=0, yoffset=0, border_
                             $ analimg = "_mods/content/elkrose_vt/extra_images/nocondom.png"
                             $ analtt = "No idea if she uses condoms for anal sex."
                             if girl.player_knows_anal_condom:
-                                if girl.wants_anal_condom:
+                                if vt_condom_now(girl, "anal"):
                                     $ analimg = "_mods/content/elkrose_vt/extra_images/condom_premium50.png"
                                     $ analtt =  f"{{color=#ff0000}}Wants Condom for Anal!{{/color}}"
                                 else:
@@ -630,7 +616,7 @@ screen cherry_window(girl=None, position="center", xoffset=0, yoffset=0, border_
                             $ vaginalimg = "_mods/content/elkrose_vt/extra_images/nocondom.png"
                             $ vaginaltt = "No idea if she uses condoms for vaginal sex."
                             if girl.player_knows_vaginal_condom:
-                                if girl.wants_vaginal_condom:
+                                if vt_condom_now(girl, "vaginal"):
                                     $ vaginalimg = "_mods/content/elkrose_vt/extra_images/condom_premium50.png"
                                     $ vaginaltt =  f"{{color=#ff0000}}Wants Condom for Vaginal!{{/color}}"
                                 else:
@@ -860,7 +846,7 @@ screen cherry_window_row(girl=None, position="center", xoffset=0, yoffset=0, bor
                         $ oralimg = "_mods/content/elkrose_vt/extra_images/nocondom.png"
                         $ oraltt = "No idea if she uses condoms for oral sex."
                         if girl.player_knows_oral_condom:
-                            if girl.wants_oral_condom:
+                            if vt_condom_now(girl, "oral"):
                                 $ oralimg = "_mods/content/elkrose_vt/extra_images/condom_premium50.png"
                                 $ oraltt =  f"{{color=#ff0000}}Wants Condom for Oral!{{/color}}"
                             else:
@@ -900,19 +886,12 @@ screen cherry_window_row(girl=None, position="center", xoffset=0, yoffset=0, bor
                         $ bodyimg = "_mods/content/elkrose_vt/extra_images/nocondom.png"
                         $ bodytt = "No idea if she uses condoms for body play."
                         if girl.player_knows_body_condom:
-                            if girl.wants_body_condom:
+                            if vt_condom_now(girl, "body"):
                                 $ bodyimg = "_mods/content/elkrose_vt/extra_images/condom_premium50.png"
                                 $ bodytt =  f"{{color=#ff0000}}Wants Condom for Body!{{/color}}"
                             else:
                                 $ bodyimg = "_mods/content/elkrose_vt/extra_images/cherries_idle.png"
                                 $ bodytt =  f"{{color={menu_text_color_valid}}}Likes the risk during Body!{{/color}}"
-                                #will need to figure out the body cum mechanic
-                                # if girl.oral_cum > 0:
-                                    # $ cumtextfix = "unit"
-                                    # if girl.oral_cum>1:
-                                        # $ cumtextfix = "units"
-                                    # $ bodyimg = "_mods/content/elkrose_vt/extra_images/cumcherries_idle.png"
-                                    # $ bodytt =  f"{{color={menu_text_color_valid}}} Has {girl.oral_cum} of cum on her body!{{/color}}"
                         else:
                             $ bodytt = "No idea if she wants condom for Body."
                             $ bodyimg = "_mods/content/elkrose_vt/extra_images/nocondom.png"
@@ -941,7 +920,7 @@ screen cherry_window_row(girl=None, position="center", xoffset=0, yoffset=0, bor
                         $ analimg = "_mods/content/elkrose_vt/extra_images/nocondom.png"
                         $ analtt = "No idea if she uses condoms for anal sex."
                         if girl.player_knows_anal_condom:
-                            if girl.wants_anal_condom:
+                            if vt_condom_now(girl, "anal"):
                                 $ analimg = "_mods/content/elkrose_vt/extra_images/condom_premium50.png"
                                 $ analtt =  f"{{color=#ff0000}}Wants Condom for Anal!{{/color}}"
                             else:
@@ -981,7 +960,7 @@ screen cherry_window_row(girl=None, position="center", xoffset=0, yoffset=0, bor
                         $ vaginalimg = "_mods/content/elkrose_vt/extra_images/nocondom.png"
                         $ vaginaltt = "No idea if she uses condoms for vaginal sex."
                         if girl.player_knows_vaginal_condom:
-                            if girl.wants_vaginal_condom:
+                            if vt_condom_now(girl, "vaginal"):
                                 $ vaginalimg = "_mods/content/elkrose_vt/extra_images/condom_premium50.png"
                                 $ vaginaltt =  f"{{color=#ff0000}}Wants Condom for Vaginal!{{/color}}"
                             else:
@@ -1199,7 +1178,7 @@ screen cherry_window_column(girl=None, position="center", xoffset=0, yoffset=0, 
                         $ oralimg = "_mods/content/elkrose_vt/extra_images/nocondom.png"
                         $ oraltt = "No idea if she uses condoms for oral sex."
                         if girl.player_knows_oral_condom:
-                            if girl.wants_oral_condom:
+                            if vt_condom_now(girl, "oral"):
                                 $ oralimg = "_mods/content/elkrose_vt/extra_images/condom_premium50.png"
                                 $ oraltt =  f"{{color=#ff0000}}Wants Condom for Oral!{{/color}}"
                             else:
@@ -1239,19 +1218,12 @@ screen cherry_window_column(girl=None, position="center", xoffset=0, yoffset=0, 
                         $ bodyimg = "_mods/content/elkrose_vt/extra_images/nocondom.png"
                         $ bodytt = "No idea if she uses condoms for body play."
                         if girl.player_knows_body_condom:
-                            if girl.wants_body_condom:
+                            if vt_condom_now(girl, "body"):
                                 $ bodyimg = "_mods/content/elkrose_vt/extra_images/condom_premium50.png"
                                 $ bodytt =  f"{{color=#ff0000}}Wants Condom for Body!{{/color}}"
                             else:
                                 $ bodyimg = "_mods/content/elkrose_vt/extra_images/cherries_idle.png"
                                 $ bodytt =  f"{{color={menu_text_color_valid}}}Likes the risk during Body!{{/color}}"
-                                #will need to figure out the body cum mechanic
-                                # if girl.oral_cum > 0:
-                                    # $ cumtextfix = "unit"
-                                    # if girl.oral_cum>1:
-                                        # $ cumtextfix = "units"
-                                    # $ bodyimg = "_mods/content/elkrose_vt/extra_images/cumcherries_idle.png"
-                                    # $ bodytt =  f"{{color={menu_text_color_valid}}} Has {girl.oral_cum} of cum on her body!{{/color}}"
                         else:
                             $ bodytt = "No idea if she wants condom for Body."
                             $ bodyimg = "_mods/content/elkrose_vt/extra_images/nocondom.png"
@@ -1280,7 +1252,7 @@ screen cherry_window_column(girl=None, position="center", xoffset=0, yoffset=0, 
                         $ analimg = "_mods/content/elkrose_vt/extra_images/nocondom.png"
                         $ analtt = "No idea if she uses condoms for anal sex."
                         if girl.player_knows_anal_condom:
-                            if girl.wants_anal_condom:
+                            if vt_condom_now(girl, "anal"):
                                 $ analimg = "_mods/content/elkrose_vt/extra_images/condom_premium50.png"
                                 $ analtt =  f"{{color=#ff0000}}Wants Condom for Anal!{{/color}}"
                             else:
@@ -1320,7 +1292,7 @@ screen cherry_window_column(girl=None, position="center", xoffset=0, yoffset=0, 
                         $ vaginalimg = "_mods/content/elkrose_vt/extra_images/nocondom.png"
                         $ vaginaltt = "No idea if she uses condoms for vaginal sex."
                         if girl.player_knows_vaginal_condom:
-                            if girl.wants_vaginal_condom:
+                            if vt_condom_now(girl, "vaginal"):
                                 $ vaginalimg = "_mods/content/elkrose_vt/extra_images/condom_premium50.png"
                                 $ vaginaltt =  f"{{color=#ff0000}}Wants Condom for Vaginal!{{/color}}"
                             else:

@@ -207,7 +207,7 @@ label vt_exam_event_girl_caught_masturbating:
 
                 return
 
-        "I want to fuck you. (no condom)" if not selected_girl.wants_vaginal_condom:
+        "I want to fuck you. (no condom)|Only when she doesn't want a condom" if not selected_girl.wants_vaginal_condom:
             $ girl_response = selected_girl.get_response_for_action("fuck_pussy")
 
             if not selected_girl.get_action_success_by_name("fuck_pussy"):

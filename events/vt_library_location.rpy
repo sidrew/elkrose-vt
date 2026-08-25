@@ -5,14 +5,14 @@ init 5 python:
         vt_repoint_menu_label(database_library_options, "between_the_stacks", "vt_between_the_stacks")
 
 label vt_between_the_stacks:
-    player.character "Would you care to join me in the stacks. I'm sure we can find an interesting book for you."
+    player.character "Would you care to join me in the stacks? I'm sure we can find an interesting book for you."
 
     $ additional_subtag = "library"
     $girl_acceptance = selected_girl.get_acceptance_by_name("free_use_compliance")
     if girl_acceptance >= 20:
         selected_girl.character "Sure, I'm sure we can find something useful to do."
 
-        "You and [selected_girl] set between the shelves where you suddenly aren't immediately noticable from the work area."
+        "You and [selected_girl] sit between the shelves where you suddenly aren't immediately noticeable from the work area."
 
         "You spend a couple of minutes doing small talk, suggesting books that they might be interested in and what not."
 
@@ -63,7 +63,7 @@ label vt_between_the_stacks:
                                 $selected_girl.apply_impacts({"affection": -1500})
                     else:
                         "You let her go, you don't have enough leverage on her to push things."
-                        "[selected_girl] makes their way back to their table and starts continuing with their homework."
+                        "[selected_girl] makes her way back to her table and starts continuing with her homework."
                         $actions_already_done[selected_girl.id].append("block_talking_library")
                         $selected_girl.apply_impacts({"affection": - 1500})
                 else:
@@ -75,7 +75,7 @@ label vt_between_the_stacks:
                     $selected_girl.apply_impacts({"affection": - 2500, "fear": 1000})
 
 
-            "Ask for a Titjob" if not (selected_girl.has_trait("small_boobs") or selected_girl.has_trait("small_boobs_fake")):
+            "Ask for a Titjob|Not available if her breasts are too small" if not (selected_girl.has_trait("small_boobs") or selected_girl.has_trait("small_boobs_fake")):
                 player.character "No one will see us back here, why don't you take those tits out and use them?"
                 $girl_acceptance = selected_girl.get_acceptance_by_name("fuck_boobs")
                 if girl_acceptance >= 40:
@@ -124,7 +124,7 @@ label vt_between_the_stacks:
                     $remove_girl_id_from_location(selected_girl.id, "girls_at_library")
                     $selected_girl.apply_impacts({"affection": -2500, "fear": 1000})
 
-            "I want to fuck you." if not selected_girl.wants_vaginal_condom:
+            "I want to fuck you.|Only when she doesn't want a condom" if not selected_girl.wants_vaginal_condom:
                 player.character "No one will see us back here, let's be quick."
                 $girl_acceptance = selected_girl.get_acceptance_by_name("fuck_pussy")
                 if girl_acceptance >= 40:

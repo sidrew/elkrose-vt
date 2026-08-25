@@ -1,5 +1,144 @@
 Virginal Tracker Mod
 
+1.0.14
+
+- NEW: pulling out now matters. When you go to finish inside a girl who's bare, not on birth control, and
+  not looking to get pregnant, she'll interject and ask you to pull out. You can respect her and pull out,
+  or push to finish inside anyway -- and whether she lets you rides on how corrupt/willing she is (she
+  might cave for good, cave just this once, or hold firm and make you pull out). Same in-the-moment feel as
+  talking her out of a condom.
+- Fixed a contradiction in the condom talk: a girl who says she likes it bare no longer gets an "I respect
+  your boundaries -- we'll always use condoms" reply (that was the opposite of her boundary). She now hears
+  you respecting her actual preference. (Vaginal done; the other acts are being brought in line.)
+- Sex acts now remember their order: going straight from vaginal or anal into a blowjob gets a special
+  spoken reaction from her before the usual line. What she says shifts with how corrupt she is (reluctant
+  and grossed-out, matter-of-fact, or filthy and eager) and with whether you were bare -- if you were raw
+  for both, it's a proper "taste yourself" moment; if a condom was in play, a milder reaction. Slipping a
+  non-penetration act in between (or wearing a condom for the oral) changes what she says accordingly.
+- Mid-sex, an act she'd want a condom for is no longer just greyed-out when you haven't yet learned
+  her preference. Now you can attempt it raw: if she was never fussed about protection there, she goes
+  along with it; if she does want a condom, she balks and you get a chance to talk her into going bare
+  (eager -> for good, or just this once, or she holds firm and the act waits). Either way you now know
+  her preference for that act for good, and the Cherry HUD fills it in. (Once you DO know she wants one,
+  the act blocks as before until you wrap up or talk her out of it.)
+- The Pregnancy & Protection topic menu now has a "Go back..." option that returns you to the
+  small-talk topic list. Backing out this way is free -- it doesn't burn one of your small-talk
+  actions for the day or charge time, so it no longer trips the "enough small talk for today" limit.
+- "I brought these prenatal vitamins if you need them." is now a free action, sitting
+  right below "How's the baby doing?" in the pregnancy sub-menu -- giving her vitamins no
+  longer ends the visit, so you can hand them over and still ask your questions.
+- Merged the "Talk about Condoms" small-talk topic into "Talk about Pregnancy &
+  Protection". The Condoms topic was a stale duplicate of the pregnancy topic's
+  protection menu (same four condom questions, older stat scale, no shared line
+  table), so the same choice paid out different stats depending on which menu you
+  opened. Condoms/birth-control/pregnancy now live under one entry on the unified,
+  corrected scale. The old topic is retired to save-compat shims.
+- Streamlined that conversation's landing: it no longer opens with a forced
+  pregnancy monologue that presumed the topic. You approach her and go straight to
+  the menu, now ordered birth control, the four condom preferences, then pregnancy.
+  "What are your thoughts on pregnancy?" is its own menu item (fires her pregnancy-
+  aware lines when she's already carrying), and the redundant "protection in
+  general" question was removed.
+- The conversation now asks one question beat per visit instead of marching you
+  through condoms, then a pregnancy-feelings menu, then prenatal vitamins in a single
+  sitting. The top level is short: birth control, "About condoms..." (opens a sub-menu
+  of the four condom questions with a "Go back..." option), and either "About your
+  pregnancy..." (a sub-menu of the pregnancy questions, when she's pregnant and you both
+  know) or the plain "What are your thoughts on pregnancy?" otherwise. Pick a question and
+  the chat wraps up; "Go back..." returns to the top without spending your turn.
+- "How's the baby doing?" now asks about the baby in her womb for any pregnant girl,
+  rather than only for girls who are already mothers, and her answer now changes with
+  the trimester she's in (early, showing, or heavily pregnant and near due). A pregnancy
+  you discovered very early (before she'd normally know) now gets a proper first-trimester
+  answer instead of a generic fallback line.
+- After asking a pregnancy-feelings question (like "How's the baby doing?"), she no longer
+  tacks on an unrelated closing comment about condoms -- that reaction now only follows an
+  actual protection question.
+- Fixed the condom-preference beats (vaginal/anal/oral) skipping their follow-up choices for
+  a girl who is secretly pregnant by the player but doesn't know it yet. She'd give a normal
+  "nervous about getting pregnant" answer but then the menu to talk her into going bare was
+  skipped. The skip now only applies once she actually knows she's carrying your child.
+- "What are your thoughts on pregnancy?" no longer fires three overlapping lines back-to-back.
+  She now gives an opener and then expounds: a repeat visit opens with a callback greeting, a
+  first visit opens with her stance, and both then lead into her fuller thoughts. A pregnant girl
+  gets her pregnancy-aware opener.
+- Every protection question you pick is now spoken by you before she answers. Previously only the
+  vaginal-condom question echoed aloud; the anal, oral, body-shot and birth-control questions jumped
+  straight to her reply, so she seemed to answer before being asked.
+- Fixed the "I brought these prenatal vitamins..." option being permanently greyed out even when you
+  were carrying PregnaVITA. It was checking the base inventory, but VT pills live in a separate stash;
+  it now reads (and spends from) the correct place.
+- In the pregnancy conversation, "How's the baby doing?" and "What are your thoughts on pregnancy?" are
+  now free to ask -- each can be asked once per visit and then drops off the list without ending the
+  chat, so you can ask both and still pick a main topic. "How's the baby doing?" is now the first option.
+- Fixed girls who are mothers (they have their own child) wrongly talking as if they'd carried YOUR
+  baby -- e.g. "I've already carried your baby once" or "more of your children" from a woman who's
+  never had a child with you. She now speaks from her own past pregnancy and wants yours to be next,
+  while women who HAVE had your child keep their "again / your baby" lines.
+- Fixed the "About your pregnancy..." conversation (all "our baby" talk) opening for a girl who is
+  pregnant by someone else -- she no longer refers to another man's child as yours. That menu now
+  only appears when the baby is yours; otherwise the general pregnancy option is offered instead.
+- The "sibling?" family pitch and the "isn't there something exciting?" thrill pitch can now be asked
+  whether or not she's on birth control, with different flavor for each: on the pill she's pitched to
+  stop, off it she's already there and the talk turns to actually trying. The sibling line also now
+  reads "a sibling" or "another sibling" depending on how many children she already has.
+- When a girl KNOWS she's pregnant, the birth-control conversation no longer pretends otherwise: asking
+  her thoughts on birth control gets a pregnancy-aware answer ("I'm already pregnant -- birth control's
+  rather beside the point now") and the whole moot sub-menu (start/stop the pill, the breeding pitches)
+  is skipped -- you no longer ask a visibly-expecting woman whether pregnancy sounds exciting. Talk about
+  her pregnancy itself under "About your pregnancy..." instead. (A girl who is secretly pregnant and
+  hasn't realized it yet still talks normally -- she can't acknowledge a pregnancy she doesn't know about.)
+- The "would [child] like a sibling?" family pitch now answers in kind: a girl who's already a mother
+  talks about giving her little one a sibling, while a childless girl talks about starting a family --
+  instead of a flat comment about her birth-control status.
+- Every birth-control ask -- the four persuasion pitches (natural cycle, sibling, the exciting-risk one,
+  health) AND the direct "Would you consider stopping birth control?" -- can now be asked once you're
+  having the birth-control conversation at all; they're no longer locked behind having built a physical
+  relationship first. Whether she agrees is decided by her own inclinations (how much she wants a baby,
+  how corrupt/cautious she is), not by whether you've slept with her.
+- The greyed birth-control persuasion pitches now explain the REAL reason they're unavailable on hover,
+  instead of a single fixed hint that could be misleading (e.g. a mother saw "only if she leans toward a
+  bigger family" even though being a mother already satisfies that -- the actual blocker was that you
+  hadn't built enough of a relationship yet). The hint now names whichever condition is actually blocking.
+- The "What are your thoughts on birth control methods?" conversation gained four new persuasion
+  angles, salvaged from the old (never-enabled) birth-control topic: appealing to her natural cycle,
+  to starting a family / giving her child a sibling, to the thrill of the risk, or to being
+  responsible about her health. Each appears only when it fits her, and whether she agrees runs
+  through the same consent system as the other birth-control choices. The old birth-control topic
+  file has been retired.
+- Greyed-out menu options now explain themselves across the mod's conversations and location scenes
+  (pregnancy small-talk, bathroom, library, pre-exam): grade-bump / A+ / cash / stat-gated / condom /
+  trait-gated choices that appear disabled now show a short hint on hover for why they're unavailable
+  (e.g. "Only available for students", "Requires your compassion above 6", "Only when she doesn't want
+  a condom").
+- NEW: SafeDOCK and DryDOCK are finally functional. Both pill gifts have sat inert since 1.0.7,
+  waiting on base-game support that never came, so we built them ourselves. SafeDOCK gives a flat,
+  non-stacking 7-day window where conception is blocked outright; DryDOCK ends an existing pregnancy,
+  but only within its first 14 real days (before she'd notice on her own) -- past that, or if she
+  isn't pregnant, it does nothing. Both run through the same consent system as everything else: a
+  girl who isn't there with you yet refuses outright, one who wants what the pill would undo can be
+  talked into it or holds firm (hesitant and refusing now read as genuinely different reactions, not
+  just a harsher no), and one who's already on board just takes it.
+- SafeDOCK no longer argues with a girl who's already pregnant -- it only blocks future conception,
+  so offering it once you know she's expecting is greyed out with an explanation, and if she knows
+  and you don't, she corrects you instead of negotiating over a pregnancy you don't know she has.
+- Fixed DryDOCK reporting "no effect" on a genuinely early pregnancy -- it was checking against the
+  PregnaVITA-sped-up progress counter instead of real elapsed days, so a boosted pregnancy could look
+  further along than it actually was. Its result message is also careful never to tell you something
+  you don't already know: if you're not aware she's pregnant, giving her the pill won't tip you off
+  either way.
+- Giving a gift now offers "Gift Item" (the usual grid) or a new "Give Medicine" list of just the
+  four VT pills -- split out so SafeDOCK/DryDOCK's new consent dialogue doesn't collide with the base
+  game's own gift-acceptance reaction in the same breath.
+- NEW: you can now slip a pill into a girl's coffee without her knowing. Buy a coffee for a patron at
+  the coffee shop, or offer to refill a teacher/TA's cup in the lounge, and you'll get the option to
+  lace it with any pill you're carrying. She never reacts, and the game never tells you anything
+  about her you didn't already know -- no free pregnancy test. Doesn't work on whoever's actually
+  working the counter.
+- Fixed a bathroom bribe (cash or a grade bump) silently flipping her condom preference as a side
+  effect of accepting it -- taking the bribe no longer overrides what she actually wants.
+- Typo and grammar cleanups across several dialogue and HUD files.
+
 1.0.13
 
 - Fixed the condom cherry blanking the HUD (and sometimes crashing) when opened
@@ -178,7 +317,6 @@ Virginal Tracker Mod
 - Fixed the Daddy's Girl trait silently dropping a stat modifier (a duplicate dictionary key).
 
 Known issues / TODO (flagged during audit):
-- SafeDOCK / DryDOCK gift items call girl.apply_planb_pill() / girl.apply_emergency_pill(), which are not defined yet -> crash if gifted. (Main dev to implement.)
 - "trust" impact key in birth-control/condom small-talk is a no-op (no trust stat exists yet) -> intended future feature.
 - Small-talk stat impacts (20-40) are tiny on the XP scale; revisit if visible movement was intended.
 - The vt_ small-talk redirect stubs are a temporary save-compat measure; remove them in a future version once pre-1.0.6 saves are no longer a concern.

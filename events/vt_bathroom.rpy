@@ -443,7 +443,7 @@ label vt_academy_bathroom_sex:
                                 if player.cash >= 500:
                                     $ player.cash -= 500
                                     $ girl.cash += 500
-                                    $ girl.wants_vaginal_condom = False
+                                    # F3: bribe no longer silently flips her condom preference (protection-consistency).
                                     if hasattr(girl, "mother") and girl.mother: # is_student
                                         girl.character "500? For my... discretion? Fine. Deal."
                                     elif hasattr(girl, "daughter") and girl.daughter: # is_base_mother
@@ -459,7 +459,7 @@ label vt_academy_bathroom_sex:
                                 else:
                                     girl.character "You don't have it on you? Don't waste my time then."
                                     $ girl.apply_impacts({"affection": (-750, -250)})
-                            "Grant her a grade bump of 5 percent?" if hasattr(girl, 'grades'):
+                            "Grant her a grade bump of 5 percent?|Only available for students" if hasattr(girl, 'grades'):
                                 if hasattr(girl, 'grades'):
                                     # Check if already at max
                                     if girl.grades >= 100:
@@ -469,7 +469,7 @@ label vt_academy_bathroom_sex:
                                         # Apply 5 point increase (not 5% of current grade)
                                         $ new_grade = min(100, girl.grades + 5)
                                         $ girl.grades = new_grade
-                                        $ girl.wants_vaginal_condom = False
+                                        # F3: bribe no longer silently flips her condom preference (protection-consistency).
                                         $ girl.apply_impacts({"baby_desire": (250, 750), "affection": (250, 750), "corruption": (850, 1500), "discipline": (-750, -250)})
                                         
                                         girl.character "A grade bump? For this? You must really want me in there. Deal!!"
@@ -549,7 +549,7 @@ label vt_academy_bathroom_sex:
                                 if player.cash >= 500:
                                     $ player.cash -= 500
                                     $ girl.cash += 500
-                                    $ girl.wants_vaginal_condom = False
+                                    # F3: bribe no longer silently flips her condom preference (protection-consistency).
                                     if hasattr(girl, "mother") and girl.mother: # is_student
                                         girl.character "Fine. Take your dirty money. I hope it was worth it."
                                     elif hasattr(girl, "daughter") and girl.daughter: # is_base_mother
@@ -577,7 +577,7 @@ label vt_academy_bathroom_sex:
                                         # Apply 5 point increase (not 5% of current grade)
                                         $ new_grade = min(100, girl.grades + 5)
                                         $ girl.grades = new_grade
-                                        $ girl.wants_vaginal_condom = False
+                                        # F3: bribe no longer silently flips her condom preference (protection-consistency).
                                         $ girl.apply_impacts({"baby_desire": (250, 750), "affection": (250, 750), "corruption": (850, 1500), "discipline": (-750, -250)})
                                         
                                         if hasattr(girl, "mother") and girl.mother:  # is_student
@@ -670,7 +670,7 @@ label vt_academy_bathroom_sex:
                     if player.cash >= 500:
                         $ player.cash -= 500
                         $ selected_girl.cash += 500
-                        $ selected_girl.wants_vaginal_condom = False
+                        # F3: bribe no longer silently flips her condom preference (protection-consistency).
                         if is_student:
                             selected_girl.character "500? For my... discretion? Fine. Deal."
                         elif is_base_mother:
@@ -706,7 +706,7 @@ label vt_academy_bathroom_sex:
                             # Apply 5 point increase (not 5% of current grade)
                             $ new_grade = min(100, selected_girl.grades + 5)
                             $ selected_girl.grades = new_grade
-                            $ selected_girl.wants_vaginal_condom = False
+                            # F3: bribe no longer silently flips her condom preference (protection-consistency).
                             $ selected_girl.apply_impacts({"baby_desire": (250, 750), "affection": (250, 750), "corruption": (950, 1500), "discipline": (-750, -250)})
                             
                             if is_student:
