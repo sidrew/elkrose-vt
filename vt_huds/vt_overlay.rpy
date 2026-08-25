@@ -10,11 +10,38 @@ define vt_mother_convo_labels = {"home_visit_mother_discussion"}
 # floating over. Set by the chained config.label_callback installed below.
 default vt_active_label = ""
 
-# Install a chained label_callback (runs late so it wraps any callback the base
-# game or another mod registered). Underscore-prefixed names are not saved.
+# Sex-act history per girl (id -> {"act", "raw"}) for the penetration->oral reaction. Two slots because the
+# recorder runs before the oral hook: vt_last_act_by_girl = most recent act; vt_prev_act_by_girl = the one
+# before it (what vt_catch_oral_sex reads). Reset each encounter below.
+default vt_prev_act_by_girl = {}
+default vt_last_act_by_girl = {}
+
+# Girl ids who conceded "finish inside" this encounter only (03_vt_pullout_coercion.rpy). Permanent
+# version = the girl's vt_accepts_vaginal_creampie flag.
+default vt_creampie_session = set()
+
+# Chained label_callback (runs late to wrap base/other-mod callbacks). Underscore name = not saved.
 init 100 python:
     def _vt_label_callback(name, abnormal):
         store.vt_active_label = name
+        # New sex session -> clear per-session go-bare state (concessions revert, attempts reset).
+        if name == "start_sex_interaction":
+            try:
+                vt_reset_gobare_session()
+            except Exception:
+                pass
+            # Fresh encounter -> no "previous act" yet (used by the penetration->oral reaction).
+            try:
+                store.vt_prev_act_by_girl.clear()
+                store.vt_last_act_by_girl.clear()
+            except Exception:
+                store.vt_prev_act_by_girl = {}
+                store.vt_last_act_by_girl = {}
+            # Fresh encounter -> this-session "finish inside" concessions revert.
+            try:
+                store.vt_creampie_session.clear()
+            except Exception:
+                store.vt_creampie_session = set()
         _prev = getattr(store, "_vt_prev_label_callback", None)
         if _prev is not None:
             _prev(name, abnormal)
@@ -111,10 +138,8 @@ screen vt_cherry_overlay():
 
     if isinstance(_vt_tooltip, Girl):
         $ _tt_mx, _tt_my = renpy.get_mouse_pos()
-        # Mirror the base tooltip's xpos exactly (screen_tooltip_overlay.rpy), then add
-        # the +6 left padding of that screen's outer frame (gui.frame_borders = 6) which
-        # the popup sits inside but our bare `fixed` does not -- so the cherry box stays
-        # left-justified with the popup.
+        # Mirror the base tooltip xpos (screen_tooltip_overlay.rpy) + its frame's +6 padding, so the
+        # cherry box stays left-justified with the popup.
         $ _tt_xoffset = max(min(int(_tt_mx), 1920 - max_tooltip_width), 5) + 6
         $ _tt_yoffset = int(1080 * 0.15) + 478
         fixed at tooltip_fade_in:

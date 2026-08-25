@@ -1018,7 +1018,7 @@ init -3 python:
                         "player": {"arousal": 0.1},
                     }
                 },
-                description="She's developed a mild interest having cum shot on her breasts.",
+                description="She's developed a mild interest in having cum shot on her breasts.",
                 sponsor_description="Can perform basic boob cumshot scenes with minimal direction.",
                 earn_requirements="girl.boob_cum_fetish >= 50",
                 earn_requirements_description="Earned: Boob cum fetish at 50+",
@@ -1212,7 +1212,7 @@ init -3 python:
                         "player": {"arousal": 0.1},
                     }
                 },
-                description="She's developed a mild interest having cum shot on her thighs.",
+                description="She's developed a mild interest in having cum shot on her thighs.",
                 sponsor_description="Can perform basic thigh cumshot scenes with minimal direction.",
                 earn_requirements="girl.get_tracked_action_count(('cumshot_thighs', 'sleep_cumshot_thighs')) > 5",
                 earn_requirements_description="Earned: 5+ thigh cumshots",
@@ -1406,7 +1406,7 @@ init -3 python:
                         "player": {"arousal": 0.1},
                     }
                 },
-                description="She's developed a mild interest having cum shot on her ass.",
+                description="She's developed a mild interest in having cum shot on her ass.",
                 sponsor_description="Can perform basic ass cumshot scenes with minimal direction.",
                 earn_requirements="girl.ass_cum_fetish >= 50",
                 earn_requirements_description="Earned: Ass cum fetish at 50+",
@@ -1600,7 +1600,7 @@ init -3 python:
                         "player": {"arousal": 0.1},
                     }
                 },
-                description="She's developed a mild interest having cum shot on her pussy.",
+                description="She's developed a mild interest in having cum shot on her pussy.",
                 sponsor_description="Can perform basic pussy cumshot scenes with minimal direction.",
                 earn_requirements="girl.pussy_cum_fetish >= 50",
                 earn_requirements_description="Earned: Pussy cum fetish at 50+",

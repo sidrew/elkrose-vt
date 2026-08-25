@@ -40,22 +40,13 @@ init -3 python:
         if not any(label == marker_label for condition, text, label in database_small_talk_options):
             # The marker is not found, so it's safe to add our new options
 
-            # Add vt_small_talk_pregnancy
+            # Add vt_small_talk_pregnancy (covers condoms + birth control + pregnancy;
+            # the old "Talk about Condoms" topic was a stale duplicate, now merged in)
             database_small_talk_options.append(
-                ("True", "Talk about Pregnancy", "vt_small_talk_pregnancy")
+                ("True", "Talk about Pregnancy & Protection", "vt_small_talk_pregnancy")
             )
 
-            # Add vt_small_talk_condoms
-            database_small_talk_options.append(
-                ("True", "Talk about Condoms", "vt_small_talk_condoms")
-            )
-
-            # Add vt_small_talk_birth_control
-            # database_small_talk_options.append(
-                # ("True", "Talk about Birth Control", "vt_small_talk_birth_control")
-            # )
-            
-            renpy.log("VT MOD: Successfully added small_talk_options preg,condoms,bc, database")
+            renpy.log("VT MOD: Successfully added small_talk_options pregnancy+protection")
         else:
             # The marker was found, so we do nothing to avoid duplicates
             renpy.log("VT MOD: Small talk options already found. Skipping addition.")

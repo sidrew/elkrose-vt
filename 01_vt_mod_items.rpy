@@ -48,6 +48,9 @@ init -3 python:
                 accept_buff_duration=7,
                 description="FertiBOOST! A 7-day fertility supplement that provides a reliable conception advantage.\nTake when pursuing pregnancy for optimal results.\n{color=#CCCCCC}Fertility:{/color} {color=#00FF00}++{/color}"
             )
+            # Given via the "Give Medicine" submenu (vt_give_medicine, 05_vt_gift_flow_repoint.rpy)
+            # alongside the other 3 VT pills, not the base game's generic gift grid.
+            database_shop_items["gifts"]["fertility_pill"].is_giftable = False
 
         # Add prenatal vitamins
         if "prenatal_vitamins" not in database_shop_items.get("gifts", {}):
@@ -59,6 +62,7 @@ init -3 python:
                 lewdness=3,
                 description="PregnaVITA! Essential nutrients for healthy fetal development and maternal wellness during pregnancy. Take daily for optimal results.\nPrenatal vitamins that accelerate pregnancy progression.\nSpeeds Pregnancy by 2 times\n{color=#CCCCCC}Pregnancy Speed:{/color} {color=#00FF00}+++++{/color}"
             )
+            database_shop_items["gifts"]["prenatal_vitamins"].is_giftable = False
 
         # Add Plan B pill
         if "planb_pill" not in database_shop_items.get("gifts", {}):
@@ -67,10 +71,16 @@ init -3 python:
                 name="SafeDOCK",
                 icon="_mods/content/elkrose_vt/extra_images/planb_pill.png",
                 price=500,
-                lewdness=3,
-                accept_impacts={"planb_boost": 7},
+                # lewdness is inert for this item: it's only ever read by the base game's generic
+                # gift accept-chance roll (get_gift_accept_chance), and this item is never routed
+                # through that roll -- is_giftable=False below keeps it out of the generic gift
+                # grid entirely, and vt_give_medicine (05_vt_gift_flow_repoint.rpy) hands it
+                # straight to vt_dock_gift_gate (04_vt_dock_coercion.rpy), the sole source of
+                # accept/refuse for this item.
+                lewdness=0,
                 description="SafeDOCK! Closes the bay doors before a drunken sea man tries to dock.\nBlocks all conception attempts for a strict 7-day window.\n{color=#CCCCCC}Pregnancy Prevention:{/color} {color=#00FF00}++++{/color}"
             )
+            database_shop_items["gifts"]["planb_pill"].is_giftable = False
 
         # Add Emergency Contraceptive Pill
         if "emergency_pill" not in database_shop_items.get("gifts", {}):
@@ -79,10 +89,10 @@ init -3 python:
                 name="DryDOCK",
                 icon="_mods/content/elkrose_vt/extra_images/emergency_pill.png",
                 price=1000,
-                lewdness=3,
-                accept_impacts={"emergency_pill": 14},
+                lewdness=0,  # inert -- see planb_pill above
                 description="DryDOCK! A thorough reset for when the bay gets occupied too soon.\nSafely clears early pregnancy within a 14-day window.\n{color=#CCCCCC}Pregnancy Reset:{/color} {color=#00FF00}++++{/color}"
             )
+            database_shop_items["gifts"]["emergency_pill"].is_giftable = False
 
         # Add condoms
         if "condoms" not in database_shop_items.get("misc", {}):
@@ -150,7 +160,7 @@ init -3 python:
             for i, action in enumerate(database_sex_options["face"]):
                 if action.action_entry_name == "blowjob" or action.action_entry_name == "use_mouth":
                     # Regular oral sex: Just needs active condom if preferred
-                    condom_requirement = "(not girl.wants_oral_condom) or (player.condom_active != 'raw' and (not player.condom_broke or not girl.aware_oral_condom))"
+                    condom_requirement = "(not girl.wants_oral_condom) or (player.condom_active == 'raw') or ('oral' in getattr(girl, 'vt_bare_session', ())) or (player.condom_active != 'raw' and (not player.condom_broke or not girl.aware_oral_condom))"
                     
                     # *** CHECK: Only patch if our requirement is not already present ***
                     if condom_requirement not in action.requirements:
@@ -171,7 +181,7 @@ init -3 python:
                     # Oral creampie: Allowed if:
                     # - Girl doesn't want condom, OR
                     # - Condom is being used (intact OR broken but unaware)
-                    condom_requirement = "(not girl.wants_oral_condom) or (player.condom_active != 'raw' and (not player.condom_broke or not girl.aware_oral_condom))"
+                    condom_requirement = "(not girl.wants_oral_condom) or (player.condom_active == 'raw') or ('oral' in getattr(girl, 'vt_bare_session', ())) or (player.condom_active != 'raw' and (not player.condom_broke or not girl.aware_oral_condom))"
                     
                     # *** CHECK: Only patch if our requirement is not already present ***
                     if condom_requirement not in action.requirements:
@@ -195,7 +205,7 @@ init -3 python:
                     # Cumshot on boobs: Allowed if:
                     # - Girl doesn't want condom, OR
                     # - Condom is being used (intact OR broken but unaware)
-                    condom_requirement = "(not girl.wants_body_condom) or (player.condom_active != 'raw' and (not player.condom_broke or not girl.aware_boob_condom))"
+                    condom_requirement = "(not girl.wants_body_condom) or (player.condom_active == 'raw') or ('body' in getattr(girl, 'vt_bare_session', ())) or (player.condom_active != 'raw' and (not player.condom_broke or not girl.aware_boob_condom))"
                     
                     # *** CHECK: Only patch if our requirement is not already present ***
                     if condom_requirement not in action.requirements:
@@ -216,7 +226,7 @@ init -3 python:
                     # Cumshot on boobs: Allowed if:
                     # - Girl doesn't want condom, OR
                     # - Condom is being used (intact OR broken but unaware)
-                    condom_requirement = "(not girl.wants_body_condom) or (player.condom_active != 'raw' and (not player.condom_broke or not girl.aware_boob_condom))"
+                    condom_requirement = "(not girl.wants_body_condom) or (player.condom_active == 'raw') or ('body' in getattr(girl, 'vt_bare_session', ())) or (player.condom_active != 'raw' and (not player.condom_broke or not girl.aware_boob_condom))"
                     
                     # *** CHECK: Only patch if our requirement is not already present ***
                     if condom_requirement not in action.requirements:
@@ -238,7 +248,7 @@ init -3 python:
             for i, action in enumerate(database_sex_options["pussy"]):
                 if action.action_entry_name == "fuck_pussy":
                     # Regular vaginal sex: Just needs active condom if preferred
-                    condom_requirement = "(not girl.wants_vaginal_condom) or (player.condom_active != 'raw' and (not player.condom_broke or not girl.aware_vaginal_condom))"
+                    condom_requirement = "(not girl.wants_vaginal_condom) or (player.condom_active == 'raw') or ('vaginal' in getattr(girl, 'vt_bare_session', ())) or (player.condom_active != 'raw' and (not player.condom_broke or not girl.aware_vaginal_condom))"
                     
                     # *** CHECK: Only patch if our requirement is not already present ***
                     if condom_requirement not in action.requirements:
@@ -259,7 +269,7 @@ init -3 python:
                     # Vaginal creampie: Allowed if:
                     # - Girl doesn't want condom, OR
                     # - Condom is being used (intact OR broken but unaware)
-                    condom_requirement = "(not girl.wants_vaginal_condom) or (player.condom_active != 'raw' and (not player.condom_broke or not girl.aware_vaginal_condom))"
+                    condom_requirement = "(not girl.wants_vaginal_condom) or (player.condom_active == 'raw') or ('vaginal' in getattr(girl, 'vt_bare_session', ())) or (player.condom_active != 'raw' and (not player.condom_broke or not girl.aware_vaginal_condom))"
                     
                     # *** CHECK: Only patch if our requirement is not already present ***
                     if condom_requirement not in action.requirements:
@@ -281,7 +291,7 @@ init -3 python:
             for i, action in enumerate(database_sex_options["ass"]):
                 if action.action_entry_name == "fuck_ass":
                     # Regular anal sex: Just needs active condom if preferred
-                    condom_requirement = "(not girl.wants_anal_condom) or (player.condom_active != 'raw' and (not player.condom_broke or not girl.aware_anal_condom))"
+                    condom_requirement = "(not girl.wants_anal_condom) or (player.condom_active == 'raw') or ('anal' in getattr(girl, 'vt_bare_session', ())) or (player.condom_active != 'raw' and (not player.condom_broke or not girl.aware_anal_condom))"
                     
                     # *** CHECK: Only patch if our requirement is not already present ***
                     if condom_requirement not in action.requirements:
@@ -302,7 +312,7 @@ init -3 python:
                     # Anal creampie: Allowed if:
                     # - Girl doesn't want condom, OR
                     # - Condom is being used (intact OR broken but unaware)
-                    condom_requirement = "(not girl.wants_anal_condom) or (player.condom_active != 'raw' and (not player.condom_broke or not girl.aware_anal_condom))"
+                    condom_requirement = "(not girl.wants_anal_condom) or (player.condom_active == 'raw') or ('anal' in getattr(girl, 'vt_bare_session', ())) or (player.condom_active != 'raw' and (not player.condom_broke or not girl.aware_anal_condom))"
                     
                     # *** CHECK: Only patch if our requirement is not already present ***
                     if condom_requirement not in action.requirements:
@@ -326,7 +336,7 @@ init -3 python:
                     # Cumshot on thighs: Allowed if:
                     # - Girl doesn't want condom, OR
                     # - Condom is being used (intact OR broken but unaware)
-                    condom_requirement = "(not girl.wants_body_condom) or (player.condom_active != 'raw' and (not player.condom_broke or not girl.aware_thigh_condom))"
+                    condom_requirement = "(not girl.wants_body_condom) or (player.condom_active == 'raw') or ('body' in getattr(girl, 'vt_bare_session', ())) or (player.condom_active != 'raw' and (not player.condom_broke or not girl.aware_thigh_condom))"
                     
                     # *** CHECK: Only patch if our requirement is not already present ***
                     if condom_requirement not in action.requirements:
@@ -343,9 +353,42 @@ init -3 python:
                         )
                         renpy.log(f"VT MOD: Patched {action.action_entry_name} with correct cumshot logic")
         
+        # --- Route every condom-relevant act through the in-the-moment "attempt it raw" gate ---
+        # Instead of hard-blocking an undiscovered preference, the act stays selectable (the requirement
+        # strings above now pass when player_knows_<slot>_condom is False). Selecting it lands on
+        # vt_condom_attempt_gate, which resolves the raw attempt (discover + maybe coerce) then plays the
+        # real act. We redirect .label here (a second pass) rather than at each of the 9 build sites:
+        # stash the true label as vt_real_label so the gate can call through. Only touch acts we actually
+        # condom-patched (their requirements carry 'vt_bare_session'); idempotent via the label guard.
+        vt_condom_slot_by_entry = {
+            "blowjob": "oral", "use_mouth": "oral", "facial": "oral", "creampie_mouth": "oral",
+            "fuck_boobs": "body", "cumshot_boobs": "body", "cumshot_thighs": "body",
+            "fuck_pussy": "vaginal", "cumshot_pussy": "vaginal", "creampie_pussy": "vaginal",
+            "fuck_ass": "anal", "creampie_ass": "anal",
+        }
+        for _vt_cat, _vt_acts in database_sex_options.items():
+            for _vt_a in _vt_acts:
+                _vt_slot = vt_condom_slot_by_entry.get(getattr(_vt_a, "action_entry_name", ""))
+                if (_vt_slot and "vt_bare_session" in getattr(_vt_a, "requirements", "")
+                        and getattr(_vt_a, "label", "") != "vt_condom_attempt_gate"):
+                    _vt_a.vt_real_label = _vt_a.label
+                    _vt_a.vt_condom_slot = _vt_slot
+                    _vt_a.label = "vt_condom_attempt_gate"
+
         renpy.log("VT MOD: Successfully checked and patched necessary sex actions")
     else:
         renpy.log("VT MOD ERROR: database_sex_options not found! Could not patch sex actions")
+
+    # Route the "Creampie her pussy" climax choice through the pull-out gate (03_vt_pullout_coercion.rpy),
+    # same idea as the condom gate on database_sex_options: point the cum-target's option_label at our gate,
+    # which resolves the pull-out interjection then plays the real creampie (or the external cumshot).
+    # Idempotent (only redirects the pristine base label); database_cum_targets is rebuilt each launch, so
+    # this is save-safe. The gate hardcodes the real labels, so no stash is needed.
+    if "database_cum_targets" in globals():
+        _vt_cp = database_cum_targets.get("creampie_pussy")
+        if isinstance(_vt_cp, dict) and _vt_cp.get("option_label") == "generic_action_creampie_pussy":
+            _vt_cp["option_label"] = "vt_pullout_climax_gate"
+            renpy.log("VT MOD: Redirected creampie_pussy cum-target through the pull-out gate")
 
 
     # CORRECTED: Patch the consume_item method instead of redefining the whole class
@@ -391,28 +434,22 @@ init -3 python:
                     girl.prenatal_boost = getattr(girl, "prenatal_boost", 0) + 1
                     vt_preg_notify(vt_pill_reaction(girl, "prenatal_vitamins"), duration=3.5)
 
-                if self.id == "planb_pill":
-                    # Apply planb boost to the girl
-                    girl.apply_planb_pill()
-                    girl.planb_pills += 1  # 7 day of protection from pregnancy
-                    renpy.log(f"{girl.first_name} was given SafeDOCK!")
-                    vt_preg_notify(f"{girl.first_name} was given SafeDOCK!", duration=3.0)
+                if self.id in ("planb_pill", "emergency_pill"):
+                    # Consent gate (04_vt_dock_coercion.rpy): she may refuse outright (not open to
+                    # the player managing her reproduction yet) or need talking into it (wants the
+                    # outcome the pill would prevent). Legal to renpy.call a label from here --
+                    # give_gift runs as a $-python statement inside the active label
+                    # give_girl_gift (label_give_girl_gift.rpy), same technique
+                    # 03_vt_pullout_coercion.rpy uses. vt_dock_gift_applied (set by the label)
+                    # reports whether she actually took it, for the ammo-spend check below.
+                    renpy.call("vt_dock_gift_gate", girl=girl, pill_id=self.id)
 
-                if self.id == "emergency_pill":
-                    # Apply fertility boost to the girl
-                    girl.apply_emergency_pill()
-                    girl.emergency_pill += 1  # 14 day of fertility boost
-                    renpy.log(f"{girl.first_name} was given a DryDOCK!")
-                    vt_preg_notify(f"{girl.first_name} was given a DryDOCK!", duration=3.0)
-
-                # Spend one unit of pill "ammo" now that the gift has been applied.
-                if is_vt_pill:
-                    try:
-                        counts = vt_player_pill_counts(player)
-                        if counts.get(self.id, 0) > 0:
-                            counts[self.id] -= 1
-                    except Exception:
-                        pass
+                # Spend one unit of pill "ammo" now that the gift has been applied. A refused
+                # SafeDOCK/DryDOCK (blanket or persuaded-no) was never actually taken, so it isn't spent.
+                if self.id in ("planb_pill", "emergency_pill") and not vt_dock_gift_applied:
+                    pass
+                elif is_vt_pill:
+                    vt_spend_pill_ammo(player, self.id)
 
                 # Condoms aren't gifts -- they're auto-converted to counts at purchase and
                 # spent from the cherry HUD, so they're not handled here.

@@ -181,12 +181,7 @@ init python:
         renpy.show_screen("vt_relationals_notification", message=message, duration=duration)
 
     def vt_baby_desire_band(girl):
-        """Resolve baby_desire into the mod's desire tiers.
-
-        Mirrors the ladder in the creampie-roll notifier (this file, ~3470-3500) so all
-        baby-desire copy speaks the same language. Clamps defensively on read because the
-        apply_impacts write-path can push baby_desire past 100 (see VT-Pregnancy-System.md).
-        """
+        """Resolve baby_desire into the mod's desire tiers (clamped 0-100 on read)."""
         d = max(0, min(100, getattr(girl, "baby_desire", 0)))
         if d >= 99:
             return "obsession"
@@ -200,15 +195,301 @@ init python:
             return "curious"
         return "none"
 
-    def vt_pill_reaction(girl, pill_id):
-        """Player-facing reaction text for a VT fertility-pill gift.
+    # Small-talk willingness / consent model. Three axes so player stats can't force her answer or wording:
+    #   1. vt_willingness_band()      -- does she agree, and how readily (her stats).
+    #   2. vt_explicitness_register() -- how crude the words are (her corruption traits).
+    #   3. voice                      -- dominant_approach / initial_reaction buckets (wording only).
 
-        Varies by the girl's baby_desire band, her pregnancy/awareness state
-        (pregnant / knows_pregnant / player_knows_pregnant), and whether she already
-        carries the player's child (kids_with_player) -- the latter reuses the existing
-        "already a parent" axis from the creampie ladder instead of separate mother copy.
-        Returns a string for vt_preg_notify.
-        """
+    def vt_explicitness_register(girl):
+        """Girl's sexual-wording register from her corruption traits: crude/explicit/direct/neutral/shy/demure.
+        Wording only -- never decides consent."""
+        ht = getattr(girl, "has_trait", None)
+        if not callable(ht):
+            return "neutral"
+        if ht("ultimate_whore"):
+            return "crude"
+        if ht("whore"):
+            return "explicit"
+        if ht("slut"):
+            return "direct"
+        if ht("conservative"):
+            return "demure"
+        if ht("reserved"):
+            return "shy"
+        return "neutral"
+
+    # Register fallback chains for vt_voice: resolve toward 'neutral' so a beat needn't define every register.
+    _VT_REGISTER_FALLBACK = {
+        "crude":    ["crude", "explicit", "direct", "neutral"],
+        "explicit": ["explicit", "direct", "neutral"],
+        "direct":   ["direct", "neutral"],
+        "neutral":  ["neutral"],
+        "shy":      ["shy", "neutral"],
+        "demure":   ["demure", "shy", "neutral"],
+    }
+
+    def vt_voice(girl, options, default=""):
+        """Pick a register-appropriate randomized line. `options` maps register -> a line or list of
+        variants; resolves the girl's register, walks _VT_REGISTER_FALLBACK toward 'neutral', then
+        random-picks a variant (rollback-safe). Returns `default` if nothing matches."""
+        reg = vt_explicitness_register(girl)
+        for key in _VT_REGISTER_FALLBACK.get(reg, ["neutral"]):
+            if key in options:
+                v = options[key]
+                if isinstance(v, (list, tuple)):
+                    return renpy.random.choice(v) if v else default
+                return v
+        return default
+
+    # Penetration -> oral ("ATM") reaction lines, spoken by her; register picks the tone. "dirty" = raw for
+    # both acts (real taste); "covered" = a condom was in play (milder).
+    VT_ATM_LINES = {
+        "vaginal": {
+            "dirty": {
+                "crude":    ["Mmh, give it here -- I wanna taste what my cunt did to your cock.",
+                             "Filthy. Put it in my mouth, let me lick my own pussy off you."],
+                "explicit": ["God... let me clean my pussy off your cock with my tongue.",
+                             "You want me to taste myself right off you? Mmm... give it."],
+                "direct":   ["You want me to taste myself off you? ...Okay. Give it here.",
+                             "That was just inside me. ...Fine, I'll put it in my mouth."],
+                "neutral":  ["That was just... inside me. And you want it in my mouth now?"],
+                "shy":      ["B-but it was just... inside me... you want me to put my mouth on it?"],
+                "demure":   ["That was just inside me... must I really put my mouth to it now?"],
+            },
+            "covered": {
+                "crude":    ["You were just balls-deep in my cunt and now you want my mouth? Nasty. Gimme."],
+                "explicit": ["Mmm, straight from my pussy to my lips... you're insatiable."],
+                "direct":   ["You were just inside me a second ago. ...Alright, give it here."],
+                "neutral":  ["You were just using that on my pussy... and now my mouth?"],
+                "shy":      ["It was... just inside me... a-and now my mouth? O-okay..."],
+                "demure":   ["You were only just inside me... you'd have me use my mouth now?"],
+            },
+        },
+        "anal": {
+            "dirty": {
+                "crude":    ["Fuck it -- shove that dirty cock in my mouth, I've earned the taste.",
+                             "Straight from my ass to my throat? God yes. Give it to me."],
+                "explicit": ["You want my mouth right after my ass? You filthy thing... hand it over."],
+                "direct":   ["That was just in my ass and you want it in my mouth? ...You're awful. Fine."],
+                "neutral":  ["That was just... in my ass. And now you want my mouth?"],
+                "shy":      ["N-no way... it was just in my b-butt... y-you want--... o-okay, okay..."],
+                "demure":   ["That was just in my behind... surely you don't expect my mouth...?"],
+            },
+            "covered": {
+                "crude":    ["Straight from my ass to my mouth, huh? You're a nasty one. Come here."],
+                "explicit": ["Mmm... from my ass to my lips. You really can't get enough of me."],
+                "direct":   ["You were just in my ass. ...Give me a second, then okay."],
+                "neutral":  ["You were just in my ass... and now you want my mouth?"],
+                "shy":      ["That was in my... behind... a-and now my mouth?"],
+                "demure":   ["You were only just in my behind... my mouth, now?"],
+            },
+        },
+    }
+
+    def vt_atm_line(girl, source, dirty):
+        """Her register-picked reaction for a penetration->oral transition (source: 'vaginal'/'anal')."""
+        opts = VT_ATM_LINES.get(source, {}).get("dirty" if dirty else "covered", {})
+        return vt_voice(girl, opts, "")
+
+    def vt_categorize_sex_act(action_name):
+        """Coarse category of a sex act for order-tracking (penetration->oral reaction)."""
+        if action_name in ("fuck_pussy", "sleep_fuck_pussy"):
+            return "vaginal"
+        if action_name in ("fuck_ass", "sleep_fuck_ass"):
+            return "anal"
+        if action_name in ("blowjob", "sleep_blowjob", "use_mouth"):
+            return "oral"
+        return "other"
+
+    # Per-ask weights, all on 0-100 terms that sum to 1.0 so the blend stays 0-100.
+    # Caution stats enter inverted ("_inv" -> 100 - stat). Weights are tunable; revisit during playtest.
+    VT_WILLINGNESS_WEIGHTS = {
+        "stop_bc_breed":   {"baby_desire": .40, "corruption": .20, "fear_inv": .20, "discipline_inv": .10, "affection": .10},
+        "go_bare_vaginal": {"baby_desire": .20, "corruption": .40, "fear_inv": .25, "discipline_inv": .10, "affection": .05},
+        "go_bare":         {"corruption": .55, "fear_inv": .20, "naturism": .20, "affection": .05},
+        "natural_cycle":   {"corruption": .10, "discipline_inv": .20, "naturism": .60, "affection": .10},
+        "start_bc":        {"baby_desire_inv": .25, "corruption_inv": .15, "fear": .30, "discipline": .20, "intellect": .10},
+        "keep_pregnancy":  {"baby_desire_inv": .40, "corruption_inv": .20, "fear": .20, "discipline": .10, "affection_inv": .10},
+    }
+    # go_bare_anal / _oral / _body share the generic "go_bare" weights.
+
+    def _vt_stat_term(girl, key):
+        """Resolve one weight key to a 0-100 value; "<stat>_inv" -> 100 - <stat>."""
+        inv = key.endswith("_inv")
+        stat = key[:-4] if inv else key
+        if stat == "baby_desire":
+            val = max(0, min(100, getattr(girl, "baby_desire", 0)))
+        else:
+            val = getattr(girl, stat, 0)
+        return (100 - val) if inv else val
+
+    def _vt_player_nudge(girl, ask, player=None):
+        """Capped (+/-15) relationship nudge toward agreeing with the current ask. Warmth (player
+        compassion x her affection) and deference (player control x her fear+discipline) only, no lust;
+        shifts the result at most one band."""
+        if player is None:
+            player = getattr(renpy.store, "player", None)
+        if player is None:
+            return 0.0
+        n = 0.0
+        if getattr(player, "compassion", 0) > 0 and getattr(girl, "affection", 0) >= 50:
+            n += min(8.0, getattr(player, "compassion", 0) * 0.8)
+        if getattr(player, "control", 0) > 0 and (getattr(girl, "fear", 0) + getattr(girl, "discipline", 0)) / 2.0 >= 50:
+            n += min(8.0, getattr(player, "control", 0) * 0.8)
+        return max(-15.0, min(15.0, n))
+
+    def vt_willingness(girl, ask, player=None):
+        """0-100 consent score for `ask` (VT_WILLINGNESS_WEIGHTS): her stats + a capped player nudge.
+        Unknown ask -> 50 (never a hard refuse)."""
+        weights = VT_WILLINGNESS_WEIGHTS.get(ask)
+        if weights is None:
+            return 50.0
+        score = sum(_vt_stat_term(girl, k) * w for k, w in weights.items())
+        score += _vt_player_nudge(girl, ask, player)
+        return max(0.0, min(100.0, score))
+
+    def vt_willingness_band(girl, ask, player=None):
+        """Band vt_willingness on the desire ladder cut points: refuse / hesitant /
+        conditional / eager (25 / 50 / 75)."""
+        s = vt_willingness(girl, ask, player)
+        if s >= 75:
+            return "eager"
+        if s >= 50:
+            return "conditional"
+        if s >= 25:
+            return "hesitant"
+        return "refuse"
+
+    # Conversational openness & history gating (Layer 1): whether/how far a girl engages a reproductive/
+    # sexual subject at all, before the willingness model computes her answer. A loaded ask (breeding,
+    # go-bare) reaches the willingness model only if vt_ask_reachable() clears it here.
+
+    # Openness cut points and fear penalty (tunable). Below CLOSED = hard closed; CLOSED..OPEN = guarded; above OPEN = open.
+    VT_OPENNESS_TIER_CLOSED = 30
+    VT_OPENNESS_TIER_OPEN = 65
+    VT_FEAR_PENALTY_FLOOR = 40        # fear penalty-only: only fear above this drags openness down
+    VT_FEAR_PENALTY_K = 0.5
+    # Openness bonus per sexual-history level (tunable).
+    VT_HISTORY_OPENNESS_BONUS = {0: 0.0, 1: 8.0, 2: 16.0, 3: 22.0}
+
+    def vt_history_level(girl):
+        """Collapse the girl's sexual history with the player into 0..3 (he's the only male):
+          3 established  vaginal_sex_count >= 5 and pussy_cumshot_count > 0
+          2 vaginal      vaginal_sex_count > 0
+          1 intimate     any oral/anal/external, no vaginal
+          0 none"""
+        vag = getattr(girl, "vaginal_sex_count", 0) or 0
+        pussy_cum = getattr(girl, "pussy_cumshot_count", 0) or 0
+        if vag >= 5 and pussy_cum > 0:
+            return 3
+        if vag > 0:
+            return 2
+        intimate = (
+            (getattr(girl, "oral_sex_count", 0) or 0)
+            + (getattr(girl, "anal_sex_count", 0) or 0)
+            + (getattr(girl, "boob_sex_count", 0) or 0)
+            + (getattr(girl, "thigh_sex_count", 0) or 0)
+            + (getattr(girl, "ass_cumshot_count", 0) or 0)
+        )
+        return 1 if intimate > 0 else 0
+
+    def _vt_history_openness_bonus(girl):
+        return VT_HISTORY_OPENNESS_BONUS.get(vt_history_level(girl), 0.0)
+
+    def _vt_player_openness_nudge(girl, player=None):
+        """Double-edged player-proclivity modifier on openness (clamp +/-15), keyed on HER stats -- the
+        same proclivity helps with one girl and hurts with another. Magnitudes tunable.
+          compassion -> +  (warmth reads as safe)
+          control    -> + for fearful/disciplined, - for low-fear/defiant
+          lust       -> - for low-corruption, + for high-corruption
+          greed      -> ~neutral (routes to the negotiate path)"""
+        if player is None:
+            player = getattr(renpy.store, "player", None)
+        if player is None:
+            return 0.0
+        corr = getattr(girl, "corruption", 0)
+        fear = getattr(girl, "fear", 0)
+        disc = getattr(girl, "discipline", 0)
+        n = getattr(player, "compassion", 0) * 0.6
+        control = getattr(player, "control", 0)
+        if (fear + disc) / 2.0 >= 50:
+            n += control * 0.6
+        elif fear < 30:
+            n -= control * 0.6
+        lust = getattr(player, "lust", 0)
+        if corr < 40:
+            n -= lust * 0.6
+        elif corr >= 60:
+            n += lust * 0.4
+        return max(-15.0, min(15.0, n))
+
+    def vt_topic_openness(girl, player=None):
+        """0-100 score for how far the girl will engage a reproductive/sexual subject: affection,
+        corruption, naturism, sexual history; fear is penalty-only; plus a capped player-proclivity
+        nudge. Her state only."""
+        affection = getattr(girl, "affection", 0)
+        corr = getattr(girl, "corruption", 0)
+        nat = getattr(girl, "naturism", 0)
+        fear = getattr(girl, "fear", 0)
+        score = .45 * affection + .25 * corr + .10 * nat
+        score += _vt_history_openness_bonus(girl)
+        score -= max(0, fear - VT_FEAR_PENALTY_FLOOR) * VT_FEAR_PENALTY_K
+        score += _vt_player_openness_nudge(girl, player)
+        return max(0.0, min(100.0, score))
+
+    def vt_topic_tier(girl, player=None):
+        """Band vt_topic_openness into closed / guarded / open. Sub-CLOSED is a genuine hard closed: a
+        low-affection / low-corruption / no-history girl reads as a stranger and refuses the subject."""
+        score = vt_topic_openness(girl, player)
+        if score >= VT_OPENNESS_TIER_OPEN:
+            return "open"
+        if score < VT_OPENNESS_TIER_CLOSED:
+            return "closed"
+        return "guarded"
+
+    # Minimum openness tier and sexual-history level each loaded ask needs before it is offered. The
+    # breeding / bare-vaginal asks require vaginal history (level 2); vt_ask_reachable holds the exception.
+    VT_ASK_REACH = {
+        "protection":      ("guarded", 0),   # stay on BC, keep condoms, be careful
+        "go_bare":         ("open", 1),       # oral / anal / body (share the generic key)
+        "go_bare_oral":    ("open", 1),
+        "go_bare_anal":    ("open", 1),
+        "go_bare_body":    ("open", 1),
+        "go_bare_vaginal": ("open", 2),
+        "stop_bc_breed":   ("open", 2),
+        "keep_pregnancy":  ("guarded", 0),   # DryDOCK: ending an existing pregnancy, not a breeding-kink ask
+    }
+    _VT_TIER_RANK = {"closed": 0, "guarded": 1, "open": 2}
+
+    def vt_breed_exception(girl):
+        """Rare 'first time to make a baby' profile: the only way a no-vaginal-history girl reaches
+        stop_bc_breed. Callers still cap her at conditional when history < 2. Thresholds tunable."""
+        corr = getattr(girl, "corruption", 0)
+        bd = max(0, min(100, getattr(girl, "baby_desire", 0)))
+        affection = getattr(girl, "affection", 0)
+        return corr >= 85 and bd >= 85 and affection >= 70
+
+    def vt_ask_reachable(girl, ask, player=None):
+        """Layer-1 gate: is this loaded ask on the table for this girl? Checks openness tier + sexual-
+        history floor; vaginal history is a hard wall for breeding / bare-vaginal asks (one exception via
+        vt_breed_exception). Unknown ask -> reachable above CLOSED."""
+        tier = vt_topic_tier(girl, player)
+        need = VT_ASK_REACH.get(ask)
+        if need is None:
+            return tier != "closed"
+        need_tier, need_history = need
+        if _VT_TIER_RANK[tier] < _VT_TIER_RANK[need_tier]:
+            return False
+        if vt_history_level(girl) >= need_history:
+            return True
+        if ask == "stop_bc_breed" and vt_breed_exception(girl):
+            return True
+        return False
+
+    def vt_pill_reaction(girl, pill_id):
+        """Player-facing reaction text for a VT fertility-pill gift. Varies by baby_desire band, her
+        pregnancy/awareness state, and whether she carries the player's child. Returns a string for
+        vt_preg_notify."""
         name = girl.first_name
         pregnant = getattr(girl, "pregnant", False)
         knows = getattr(girl, "knows_pregnant", False)
@@ -217,10 +498,8 @@ init python:
 
         if pill_id == "fertility_pill":
             if pregnant and knows:
-                # She knows but hasn't told you yet (the player can never find out
-                # before she does, and the both-know case is excluded from the give
-                # menu). If *neither* of you knows, fall through to the baby_desire
-                # bands so the reaction doesn't quietly reveal the pregnancy.
+                # She knows but hasn't told you (both-know is excluded from the give menu). If neither
+                # knows, fall through to the baby_desire bands so we don't reveal the pregnancy.
                 return f"{name} happily takes the FertiBOOST with a subtle smile."
             band = vt_baby_desire_band(girl)
             if band == "obsession":
@@ -1011,6 +1290,31 @@ init -3 python:
             # Return (creating if needed) the pill ammo dict {pill_id: count} in the sidecar.
             return vt_player_bucket(p).setdefault("pill_counts", {})
 
+        def vt_spend_pill_ammo(p, pill_id):
+            # Spend one unit of pill "ammo" after its effect has already been applied. Shared by
+            # every spend site (vt_give_gift in 01_vt_mod_items.rpy, vt_covert_slip_pill in
+            # 06_vt_covert_pill.rpy) so the defensive handling can't drift/duplicate between
+            # copies. A raised exception here is logged rather than silently swallowed -- the
+            # effect was already applied by the time this runs, so a failure here can't be
+            # un-applied, only reported.
+            try:
+                counts = vt_player_pill_counts(p)
+                if counts.get(pill_id, 0) > 0:
+                    counts[pill_id] -= 1
+            except Exception as e:
+                renpy.log(f"VT MOD ERROR: pill ammo decrement failed for {pill_id}: {e!r} -- effect was already applied, count NOT spent.")
+
+        def vt_should_hide_fertiboost(girl):
+            # FertiBOOST is pointless once she AND the player both know she's pregnant. Shared by
+            # every FertiBOOST-listing entry point (vt_get_items_and_quantity below,
+            # vt_give_medicine in 05_vt_gift_flow_repoint.rpy, vt_covert_slip_options in
+            # 06_vt_covert_pill.rpy) so the condition can't drift between copies.
+            return (
+                getattr(girl, "pregnant", False)
+                and getattr(girl, "knows_pregnant", False)
+                and getattr(girl, "player_knows_pregnant", False)
+            )
+
         def vt_ensure_player_condom_attrs(p=None):
             # Ensure the sidecar exists and is fully populated. Idempotent. Also MIGRATES
             # any legacy loose attributes (from saves made before this mod, or before the
@@ -1213,13 +1517,12 @@ init -3 python:
                     # Once she AND the player both know she's pregnant, FertiBOOST is pointless,
                     # so don't even offer it for that girl. Scoped to the give-gift screen via
                     # selected_girl -- the plain inventory listing (no target girl) still shows
-                    # owned pills. Read-only: getattr defaults avoid creating sidecar keys here.
+                    # owned pills. Read-only: getattr defaults (inside vt_should_hide_fertiboost)
+                    # avoid creating sidecar keys here.
                     hide_ferti = False
                     if renpy.get_screen("gift_selection_screen") is not None:
                         tgt = getattr(renpy.store, "selected_girl", None)
-                        if tgt is not None and getattr(tgt, "pregnant", False) \
-                                and getattr(tgt, "knows_pregnant", False) \
-                                and getattr(tgt, "player_knows_pregnant", False):
+                        if tgt is not None and vt_should_hide_fertiboost(tgt):
                             hide_ferti = True
                     for pid, cnt in pill_counts.items():
                         if cnt > 0:
@@ -1272,47 +1575,9 @@ init -4 python:
         original_mother_init = Mother.__init__
         original_mother_daily_update = Mother.daily_update
 
-        def vt_mother_init(self, mother_config: GirlConfig, daughter: Girl):
-            # ===== PHASE 1: MINIMAL VT ATTRIBUTES NEEDED FOR CORE GAME =====
-            # Initialize ONLY attributes that are used in trait requirements
-            # BEFORE core init (to prevent the previous error)
-            vt_minimal_attributes = [
-                'boob_cum_fetish', 'thigh_cum_fetish', 'ass_cum_fetish', 'pussy_cum_fetish',
-                'oral_cum_fetish', 'vaginal_cum_fetish', 'anal_cum_fetish', 'baby_desire'
-            ]
-            
-            for attr in vt_minimal_attributes:
-                if not hasattr(self, attr):
-                    setattr(self, attr, 0)
-            
-            original_mother_init(self, mother_config, daughter)
-            
-            # ===== RELATIONSHIP TRACKING SYSTEM =====
-            # Initialize relationship-specific metrics (separate from personality traits)
-            if not hasattr(self, 'player_relationship'):
-                self.player_relationship = {
-                    "control": 0,          # How much the player dominates the relationship
-                    "greed": 0,            # Player's financial/material interest
-                    "lust": 0,             # Player's sexual interest
-                    "compassion": 0,       # Player's genuine care
-                    "reputation": 0,       # Player's standing with this girl
-                    "stage": "stranger",   # Current relationship stage
-                    "stage_progress": 0,    # Progress toward next stage
-                    "is_poly": False,
-                    "path":"neutral"
-                }
-            if not hasattr(self, 'path_seeds'):
-                self.path_seeds = {
-                    "slave": 0,
-                    "girlfriend": 0,
-                    "fwb": 0,
-                    "sugarbaby": 0,
-                    "paramour": 0,
-                    "mistress": 0
-                }
-            if not hasattr(self, 'initial_reaction'):
-                self.initial_reaction = "neutral"
-                
+        def vt_apply_init_boost_and_virginity(self):
+            # Shared post-original-init logic for both vt_girl_init and vt_mother_init:
+            # trait-prioritized top-3 stat boost + virginity/first-time status seeding.
             # ===== TOP-3 STAT BOOSTING WITH TRAIT PRIORITIZATION =====
             # Get all core personality stats after traits have been applied
             stats = {
@@ -1323,16 +1588,6 @@ init -4 python:
                 "intellect": self.intellect,
                 "naturism": self.naturism
             }
-            
-            # Calculate trait rarity bonus
-            # trait_boost = 0
-            # for trait in self.traits:
-                # if trait.rarity <= 1.0:  # Legendary or better (Super-Legendary)
-                    # trait_boost += 5
-                # elif trait.rarity <= 2.0:  # Epic
-                    # trait_boost += 3
-                # elif trait.rarity <= 3.0:  # Rare
-                    # trait_boost += 2
             
             # Identify stats that should be prioritized based on key traits
             prioritized_stats = set()
@@ -1373,10 +1628,6 @@ init -4 python:
             
             # Apply boosts to top 3 stats (with prioritization)
             for stat_name in top_3_stats:
-                # base_boost = renrandom.randint(3, 5)
-                # total_boost = base_boost + trait_boost
-                # current_value = getattr(self, stat_name)
-                # setattr(self, stat_name, min(100, current_value + total_boost))
                 boost_multiplier = self.get_stat_growth_multiplier_for_stat(stat_name)
                 true_multiplier = 2 + (boost_multiplier - girl_stat_growth_multipliers.get(stat_name, 1))
                 base_boost = renrandom.randint(3, 5)
@@ -1416,230 +1667,27 @@ init -4 python:
                 self.pussy_cumshot_count = 0
                 self.last_pussy_cumshot = -1
             # ===== END VIRGINITY SYSTEM =====
-            
-            # Mother-specific VT properties
-            if not hasattr(self, 'oral_cum'):
-                self.oral_cum = 0
-            if not hasattr(self, 'vaginal_cum'):
-                self.vaginal_cum = 0
-            if not hasattr(self, 'anal_cum'):
-                self.anal_cum = 0
-            if not hasattr(self, 'oral_sex_count'):
-                self.oral_sex_count = 0
-            if not hasattr(self, 'last_oral_sex'):
-                self.last_oral_sex = -1
-            if not hasattr(self, 'vaginal_sex_count'):
-                self.vaginal_sex_count = 0
-            if not hasattr(self, 'last_vaginal_sex'):
-                self.last_vaginal_sex = -1
-            if not hasattr(self, 'anal_sex_count'):
-                self.anal_sex_count = 0
-            if not hasattr(self, 'last_anal_sex'):
-                self.last_anal_sex = -1
-            if not hasattr(self, 'first_time_oral'):
-                self.first_time_oral = True
-            if not hasattr(self, 'first_time_pussy'):
-                self.first_time_pussy = True
-            if not hasattr(self, 'first_time_anal'):
-                self.first_time_anal = True
-            if not hasattr(self, 'aware_vaginal_condom'):
-                self.aware_vaginal_condom = False
-            if not hasattr(self, 'aware_oral_condom'):
-                self.aware_oral_condom = False
-            if not hasattr(self, 'aware_anal_condom'):
-                self.aware_anal_condom = False
-            if not hasattr(self, 'oral_cum_fetish'):
-                self.oral_cum_fetish = get_cum_fetish_level(self, "oral")
-            if not hasattr(self, 'vaginal_cum_fetish'):
-                self.vaginal_cum_fetish = get_cum_fetish_level(self, "vaginal")
-            if not hasattr(self, 'anal_cum_fetish'):
-                self.anal_cum_fetish = get_cum_fetish_level(self, "anal")
-            if not hasattr(self, 'baby_desire'):
-                self.baby_desire = get_baby_desire(self)
-            
-            # WITH these lines:
-            if not hasattr(self, 'hymen'):
-                self.hymen = False  # Mothers never have hymen
-            if not hasattr(self, 'kids'):
-                self.kids = max(1, getattr(self, 'kids', 1))  # Total children
-            if not hasattr(self, 'kids_with_player'):
-                self.kids_with_player = 0  # Only children from player
-            if not hasattr(self, 'kids_with_npc'):
-                self.kids_with_npc = 1  # mother had daughter with someone (unknown npc)
-            if not hasattr(self, 'original_daughter'):
-                self.original_daughter = (self.kids > 0)  # Flag for base mother's original daughter
-            if not hasattr(self, 'preg_father'):
-                self.preg_father = None  # Will be "player", "npc", or None if not pregnant
-            
-            #active sex tracking
-            if not hasattr(self, 'had_sex_today'):
-                self.had_sex_today = False
-            if not hasattr(self, 'having_oral_sex'):
-                self.having_oral_sex = False
-            if not hasattr(self, 'having_vaginal_sex'):
-                self.having_vaginal_sex = False
-            
-            if not hasattr(self, 'boob_cum_fetish'):
-                self.boob_cum_fetish = get_cum_fetish_level(self, "boobs")
-            if not hasattr(self, 'boob_sex_count'):
-                self.boob_sex_count = 0
-            if not hasattr(self, 'last_boob_sex'):
-                self.last_boob_sex = -1
-            if not hasattr(self, 'first_time_boobs'):
-                self.first_time_boobs = True
-            if not hasattr(self, 'aware_boob_condom'):
-                self.aware_boob_condom = False
 
-            if not hasattr(self, 'thigh_cum_fetish'):
-                self.thigh_cum_fetish = get_cum_fetish_level(self, "thighs")
-            if not hasattr(self, 'thigh_sex_count'):
-                self.thigh_sex_count = 0
-            if not hasattr(self, 'last_thigh_sex'):
-                self.last_thigh_sex = -1
-            if not hasattr(self, 'first_time_thighs'):
-                self.first_time_thighs = True
-            if not hasattr(self, 'aware_thigh_condom'):
-                self.aware_thigh_condom = False
+        def vt_mother_init(self, mother_config: GirlConfig, daughter: Girl):
+            # ===== PHASE 1: MINIMAL VT ATTRIBUTES NEEDED FOR CORE GAME =====
+            # Initialize ONLY attributes that are used in trait requirements
+            # BEFORE core init (to prevent the previous error)
+            vt_minimal_attributes = [
+                'boob_cum_fetish', 'thigh_cum_fetish', 'ass_cum_fetish', 'pussy_cum_fetish',
+                'oral_cum_fetish', 'vaginal_cum_fetish', 'anal_cum_fetish', 'baby_desire'
+            ]
             
-            if not hasattr(self, 'ass_cum_fetish'):
-                self.ass_cum_fetish = get_cum_fetish_level(self, "ass_cum")
-            if not hasattr(self, 'ass_cumshot_count'):
-                self.ass_cumshot_count = 0
-            if not hasattr(self, 'last_ass_cumshot'):
-                self.last_ass_cumshot = -1
-            if not hasattr(self, 'first_time_ass_cumshot'):
-                self.first_time_ass_cumshot = True
-            if not hasattr(self, 'aware_ass_cumshot_condom'):
-                self.aware_ass_cumshot_condom = False
+            for attr in vt_minimal_attributes:
+                if not hasattr(self, attr):
+                    setattr(self, attr, 0)
             
-            if not hasattr(self, 'pussy_cum_fetish'):
-                self.pussy_cum_fetish = get_cum_fetish_level(self, "pussy_cum")
-            if not hasattr(self, 'impreg_fetish'):
-                self.impreg_fetish = 0
-            if not hasattr(self, 'pussy_cumshot_count'):
-                self.pussy_cumshot_count = 0
-            if not hasattr(self, 'last_pussy_cumshot'):
-                self.last_pussy_cumshot = -1
-            if not hasattr(self, 'first_time_pussy_cumshot'):
-                self.first_time_pussy_cumshot = True
-            if not hasattr(self, 'aware_pussy_cumshot_condom'):
-                self.aware_pussy_cumshot_condom = False
+            original_mother_init(self, mother_config, daughter)
             
-            # Mother birth control (lower usage)
-            if not hasattr(self, 'bc_chance'):
-                self.bc_chance = 100
-            if not hasattr(self, 'birth_control'):
-                self.birth_control = renpy.random.randint(0, 100) < 10
-            if not hasattr(self, 'bc_status_known'):
-                self.bc_status_known = False
-            if not hasattr(self, 'bc_penalty'):
-                self.bc_penalty = 0
+            vt_apply_init_boost_and_virginity(self)
 
-            # Mother fertility (lower)
-            self.fertility_percent = 5.0  # Ensure Mother has fertility_percent
-            if not hasattr(self, 'ideal_fertile_day'):
-                self.ideal_fertile_day = renpy.random.randint(0, 30)
-            if not hasattr(self, 'baby_desire'):
-                self.baby_desire = 100 - renpy.random.randint(0, 100)
-            
-            # Conversation Tracking System
-            if not hasattr(self, 'has_met_before'):
-                self.has_met_before = False
-            if not hasattr(self, 'has_discussed_pregnancy_before'):
-                self.has_discussed_pregnancy_before = False
-            if not hasattr(self, 'has_discussed_birth_control_before'):
-                self.has_discussed_birth_control_before = False
-            if not hasattr(self, 'has_discussed_condoms_before'):
-                self.has_discussed_condoms_before = False
-            
-            #Condoms
-            if not hasattr(self, 'player_knows_vaginal_condom'):
-                self.player_knows_vaginal_condom = False
-            if not hasattr(self, 'player_knows_anal_condom'):
-                self.player_knows_anal_condom = False
-            if not hasattr(self, 'player_knows_oral_condom'):
-                self.player_knows_oral_condom = False
-            if not hasattr(self, 'player_knows_body_condom'):
-                self.player_knows_body_condom = False
-            if not hasattr(self, 'wants_vaginal_condom'):
-                self.wants_vaginal_condom = wants_condom(self, "vaginal")
-            if not hasattr(self, 'wants_anal_condom'):
-                self.wants_anal_condom = wants_condom(self, "anal")
-            if not hasattr(self, 'wants_oral_condom'):
-                self.wants_oral_condom = wants_condom(self, "oral")
-            if not hasattr(self, 'wants_body_condom'):
-                self.wants_body_condom = wants_condom(self, "body")
-
-            # Pregnancy tracking
-            if not hasattr(self, 'pregnant'):
-                self.pregnant = False
-            if not hasattr(self, 'preg_body'):
-                self.preg_body = False
-            if not hasattr(self, 'knows_pregnant'):
-                self.knows_pregnant = False
-            if not hasattr(self, 'player_knows_pregnant'):
-                self.player_knows_pregnant = False
-            if not hasattr(self, 'preg_progress_days'):
-                self.preg_progress_days = 0
-            if not hasattr(self, 'preg_start_day'):
-                self.preg_start_day = 0
-            if not hasattr(self, 'preg_end_day'):
-                self.preg_end_day = 0
-            if not hasattr(self, 'preg_announce'):
-                self.preg_announce = False
-            if not hasattr(self, 'days_since_last_birth'):
-                self.days_since_last_birth = 0
-            if not hasattr(self, 'just_had_baby'):
-                self.just_had_baby = False
-            if not hasattr(self, 'pregnancy_phase'):
-                self.pregnancy_phase = 0
-            # Add fertility boost attribute
-            if not hasattr(self, 'fertility_boost'):
-                self.fertility_boost = 0  # Days remaining for fertility boost
-            if not hasattr(self, 'prenatal_boost'):
-                self.prenatal_boost = 0  # PregnaVITA supply: pills on hand, taken 1/week
-            if not hasattr(self, 'prenatal_doses'):
-                self.prenatal_doses = 0  # PregnaVITA doses taken (compression factor, capped)
-
-            #Followup triggers
-            if not hasattr(self, 'has_pregnancy_followup'):
-                self.has_pregnancy_followup = False
-            if not hasattr(self, 'has_birth_control_followup'):
-                self.has_birth_control_followup = False
-            if not hasattr(self, 'has_condoms_followup'):
-                self.has_condoms_followup = False
-            if not hasattr(self, 'has_corruption_followup'):
-                self.has_corruption_followup = False
-            if not hasattr(self, 'has_naturism_followup'):
-                self.has_naturism_followup = False
-            if not hasattr(self, 'has_fear_followup'):
-                self.has_fear_followup = False
-            if not hasattr(self, 'has_blowjob_followup'):
-                self.has_blowjob_followup = False
-            if not hasattr(self, 'has_strip_tease_followup'):
-                self.has_strip_tease_followup = False
-            if not hasattr(self, 'has_get_dressed_followup'):
-                self.has_get_dressed_followup = False
-            if not hasattr(self, 'has_strip_to_underwear_followup'):
-                self.has_strip_to_underwear_followup = False
-            if not hasattr(self, 'has_naked_followup'):
-                self.has_naked_followup = False
-            if not hasattr(self, 'has_milk_followup'):
-                self.has_milk_followup = False
-            if not hasattr(self, 'has_creamer_followup'):
-                self.has_creamer_followup = False
-            if not hasattr(self, 'has_toppings_followup'):
-                self.has_toppings_followup = False
-            if not hasattr(self, 'has_small_talk_followup'):
-                self.has_small_talk_followup = False
-            if not hasattr(self, 'has_masturbation_tips_followup'):
-                self.has_masturbation_tips_followup = False
-            if not hasattr(self, 'has_shower_sex_followup'):
-                self.has_shower_sex_followup = False
-
-            # Initialize the sidecar-migrated keys (relationship, etc.) for mothers too.
-            # Runs last so the inline loose inits above are untouched; vt_ensure_girl_attrs'
-            # hasattr guards skip the still-loose attrs and only fills the sidecar bucket.
+            # Populate the sidecar bucket with every VT attribute (mother-aware). The old
+            # inline per-attribute init here was dead: each key is now a Girl property whose
+            # getter never raises, so those `if not hasattr` guards were always False.
             vt_ensure_girl_attrs(self)
 
             #original_mother_init(self, mother_config, daughter)
@@ -1785,6 +1833,8 @@ init -4 python:
             return max(100 - self.bc_penalty, 0)
 
         def pregnancy_chance(self):
+            if self.planb_pills > 0:  # SafeDOCK: strict conception block, overrides everything else
+                return 0
             if self.effective_fertility() <= 0:  # NO PARENTHESES!
                 return 0
             return (self.effective_fertility() / 100) * (100 - self.birthcontrol_efficiency())  # NO PARENTHESES!
@@ -1816,6 +1866,10 @@ init -4 python:
             vt_preg_notify(f"{self.first_name} took PregnaVITA (dose {self.prenatal_doses}/{VT_PRENATAL_DOSE_CEILING}) - pregnancy accelerating.", duration=3.0)
             renpy.log(f"VT MOD: {self.first_name} PregnaVITA dose {self.prenatal_doses}, speed {speed}x, due day {self.preg_end_day}")
 
+        # apply_planb_pill / apply_emergency_pill are defined once below on Girl (Mother inherits
+        # them automatically -- class_mother_ren.py: Mother(Girl) -- so no separate Mother-scope
+        # copy is needed; a byte-identical duplicate previously lived here).
+
         # Create patched daily_update
         def vt_mother_daily_update(self):
             original_mother_daily_update(self)
@@ -1824,10 +1878,14 @@ init -4 python:
             self.had_sex_today = False
             self.having_oral_sex = False
             self.having_vaginal_sex = False
-            
+
             # Fertility boost countdown
             if self.fertility_boost > 0:
                 self.fertility_boost -= 1
+
+            # SafeDOCK countdown
+            if self.planb_pills > 0:
+                self.planb_pills -= 1
 
             # Anal and Oral, all cum is gone by next day
             # technically doesn't really matter, as its more of a temp visual for the day.
@@ -1920,7 +1978,7 @@ init -4 python:
                     self.preg_father = None  # Clear father type after birth
                     self.prenatal_doses = 0  # clear meds acceleration
                     self.prenatal_boost = 0  # clear leftover pill supply
-                  # Visible pregnancy body after 30 days
+                # Visible pregnancy body after 30 days
                 # After 30 weeks, she will start showing third trimester, very obvious now
                 elif self.preg_progress_days >= 210:
                     self.pregnancy_phase = 3
@@ -2047,37 +2105,6 @@ init -4 python:
             
             return days_from_cycle_start
 
-            # if total_days > 0:
-                # # --- DEBUGGING LINES ---
-                # renpy.log(f"get_cycle_day DEBUG: total_days={total_days}, ideal_fertile_day={self.ideal_fertile_day}")
-                
-                # # Find the most recent ovulation day relative to the current game day
-                # days_since_ovulation = (total_days - self.ideal_fertile_day) % 30
-
-                # # --- DEBUGGING LINES ---
-                # renpy.log(f"get_cycle_day DEBUG: days_since_ovulation={days_since_ovulation}")
-
-                # # In a 30-day cycle, ovulation happens on day (30 - 14) = 16.
-                # # The cycle starts the day after ovulation.
-                # cycle_day = (16 + days_since_ovulation) % 30
-                
-                # # --- DEBUGGING LINES ---
-                # renpy.log(f"get_cycle_day DEBUG: cycle_day before 0-check={cycle_day}")
-
-                # # The modulo operator can result in 0, so we correct it to be 1-30.
-                # if cycle_day == 0:
-                    # cycle_day = 30
-                    
-                # # --- DEBUGGING LINES ---
-                # renpy.log(f"get_cycle_day DEBUG: Final cycle_day={cycle_day}")
-                # return cycle_day
-            # else:
-                # renpy.log("get_cycle_day: total_days was 0 or less.")
-                # # Fallback in case total_days was not set for any reason
-                # return 1
-                
-            
-
         #Relationals
         def vt_relationship_change(self, attribute, amount):
             previous_amount = self.player_relationship[attribute]
@@ -2112,6 +2139,8 @@ init -4 python:
         Mother.birthcontrol_efficiency = birthcontrol_efficiency
         Mother.pregnancy_chance = pregnancy_chance
         Mother.apply_prenatal_boost = apply_prenatal_boost
+        # apply_planb_pill / apply_emergency_pill are NOT assigned here -- Mother(Girl) inherits
+        # them from the Girl-scope assignment below once it runs; no separate Mother copy needed.
         Mother.days_from_ideal_fertility = consistent_days_from_ideal_fertility
         Mother.trigger_pregnancy_followup = trigger_pregnancy_followup
         Mother.trigger_birth_control_followup = trigger_birth_control_followup
@@ -2271,14 +2300,19 @@ init -14 python:
 
             if "hymen" not in bucket:
                 bucket["hymen"] = False if is_mother else True
-            if "kids" not in bucket:
-                bucket["kids"] = 1 if is_mother else 0  # Total children
+            # A base mother arrives with exactly one pre-existing child, fathered by an unknown
+            # NPC -- that daughter lives in kids_with_npc. Seed the whole tally consistently here,
+            # once and guarded, so kids always equals kids_with_player + kids_with_npc; the birth
+            # handler keeps the trio in sync afterward. Students start childless. (Legacy saves
+            # with an inconsistent tally are healed once by the migration at the end of this fn.)
             if "kids_with_player" not in bucket:
-                bucket["kids_with_player"] = 0  # Only children from player
+                bucket["kids_with_player"] = 0  # Only children from the player
             if "kids_with_npc" not in bucket:
-                bucket["kids_with_npc"] = 0  # Children from NPCs
+                bucket["kids_with_npc"] = 1 if is_mother else 0  # base mother's daughter (NPC father)
             if "original_daughter" not in bucket:
-                bucket["original_daughter"] = is_mother  # Mothers have their daughter; students don't
+                bucket["original_daughter"] = is_mother  # flag: this is a base mother's own daughter
+            if "kids" not in bucket:
+                bucket["kids"] = bucket["kids_with_player"] + bucket["kids_with_npc"]  # total (= 1 for a base mother)
             if "preg_father" not in bucket:
                 bucket["preg_father"] = None  # "player", "npc", or None if not pregnant
 
@@ -2354,6 +2388,11 @@ init -14 python:
                 bucket["wants_oral_condom"] = wants_condom(self, "oral")
             if "wants_body_condom" not in bucket:
                 bucket["wants_body_condom"] = wants_condom(self, "body")
+            # Permanent "you may finish inside me" concession (climax pull-out coercion, 03_vt_pullout_
+            # coercion.rpy). Starts False; flipped by an eager in-sex push or the small-talk finish-inside
+            # pitch. Read/written via vt_girl_bucket so no property accessor is needed.
+            if "vt_accepts_vaginal_creampie" not in bucket:
+                bucket["vt_accepts_vaginal_creampie"] = False
 
 
 
@@ -2428,14 +2467,14 @@ init -14 python:
                 bucket["prenatal_boost"] = 0  # PregnaVITA supply: pills on hand, taken 1/week
             if "prenatal_doses" not in bucket:
                 bucket["prenatal_doses"] = 0  # PregnaVITA doses taken (compression factor, capped)
-            # SafeDOCK / DryDOCK state -- sidecar slots ready; the base dev still needs to
-            # implement apply_planb_pill / apply_emergency_pill that drive these.
+            # SafeDOCK / DryDOCK state -- apply_planb_pill / apply_emergency_pill (defined below,
+            # bound onto Girl/Mother) drive these.
             if "planb_pills" not in bucket:
                 bucket["planb_pills"] = 0      # SafeDOCK: conception-block days remaining
             if "emergency_pill" not in bucket:
-                bucket["emergency_pill"] = 0   # DryDOCK: effect days remaining
+                bucket["emergency_pill"] = 0   # DryDOCK: unused -- apply_emergency_pill acts immediately, no duration to track
             if "planb_boost" not in bucket:
-                bucket["planb_boost"] = 0
+                bucket["planb_boost"] = 0      # unused -- superseded by planb_pills
 
             #Followup triggers
             if "has_pregnancy_followup" not in bucket:
@@ -2504,6 +2543,22 @@ init -14 python:
                         self.knows_pregnant = True
                         self.birth_control = False
 
+            # ---- one-time kids-tally reconciliation (version-flagged) ----
+            # A base mother's daughter lives in kids_with_npc; kids must equal player+npc. New
+            # mothers are seeded consistently above, so this only heals LEGACY saves -- older mod
+            # versions stored the daughter with npc=0, or double-counted her in kids. Runs once
+            # per girl, then never again; it is NOT the old every-load re-assertion. The seed
+            # block above guarantees all four keys are already in the bucket by now.
+            if bucket.get("kids_tally_version", 0) < 1:
+                bucket["kids_tally_version"] = 1
+                if is_mother:
+                    bucket["original_daughter"] = True
+                    bucket["kids_with_player"] = max(0, bucket["kids_with_player"])
+                    bucket["kids_with_npc"] = max(1, bucket["kids_with_npc"])   # her daughter
+                    bucket["kids"] = max(1, bucket["kids_with_player"] + bucket["kids_with_npc"])
+                else:
+                    bucket["kids"] = max(0, bucket["kids_with_player"] + bucket["kids_with_npc"])
+
         # Create patched __init__
         def vt_girl_init(self, *args, **kwargs):
             # ===== PHASE 1: MINIMAL VT ATTRIBUTES NEEDED FOR CORE GAME =====
@@ -2520,109 +2575,7 @@ init -14 python:
             
             original_girl_init(self, *args, **kwargs)
 
-            # ===== TOP-3 STAT BOOSTING WITH TRAIT PRIORITIZATION =====
-            # Get all core personality stats after traits have been applied
-            stats = {
-                "affection": self.affection,
-                "corruption": self.corruption,
-                "discipline": self.discipline,
-                "fear": self.fear,
-                "intellect": self.intellect,
-                "naturism": self.naturism
-            }
-            
-            # Calculate trait rarity bonus
-            # trait_boost = 0
-            # for trait in self.traits:
-                # if trait.rarity <= 1.0:  # Legendary or better (Super-Legendary)
-                    # trait_boost += 5
-                # elif trait.rarity <= 2.0:  # Epic
-                    # trait_boost += 3
-                # elif trait.rarity <= 3.0:  # Rare
-                    # trait_boost += 2
-            
-            # Identify stats that should be prioritized based on key traits
-            prioritized_stats = set()
-            
-            # Check for traits that should guarantee stat boosting
-            for trait in self.traits:
-                if trait.name == "nympho":
-                    prioritized_stats.add("corruption")
-                    prioritized_stats.add("arousal")
-                elif trait.name == "brilliant":
-                    prioritized_stats.add("intellect")
-                elif trait.name == "naturist":
-                    prioritized_stats.add("naturism")
-                elif trait.name == "rebellious":
-                    prioritized_stats.add("discipline")  # Actually negative, but we want to emphasize it
-                # Add other key trait mappings as needed
-            
-            # Sort stats by value (highest first)
-            sorted_stats = sorted(stats.items(), key=lambda x: x[1], reverse=True)
-            
-            # Get top 3 stats, but ensure prioritized stats are included if possible
-            top_3_stats = []
-            
-            # First add prioritized stats that aren't already in top stats
-            for stat_name, _ in sorted_stats:
-                if stat_name in prioritized_stats:
-                    top_3_stats.append(stat_name)
-                    if len(top_3_stats) >= 3:
-                        break
-            
-            # Then fill remaining slots with highest non-prioritized stats
-            if len(top_3_stats) < 3:
-                for stat_name, _ in sorted_stats:
-                    if stat_name not in top_3_stats:
-                        top_3_stats.append(stat_name)
-                        if len(top_3_stats) >= 3:
-                            break
-            
-            # Apply boosts to top 3 stats (with prioritization)
-            for stat_name in top_3_stats:
-                # base_boost = renrandom.randint(3, 5)
-                # total_boost = base_boost + trait_boost
-                # current_value = getattr(self, stat_name)
-                # setattr(self, stat_name, min(100, current_value + total_boost))
-                boost_multiplier = self.get_stat_growth_multiplier_for_stat(stat_name)
-                true_multiplier = 2 + (boost_multiplier - girl_stat_growth_multipliers.get(stat_name, 1))
-                base_boost = renrandom.randint(3, 5)
-                total_boost = base_boost * true_multiplier
-                current_value = getattr(self, stat_name)
-                setattr(self, stat_name, min(100, current_value + total_boost))
-            
-            # Ensure stats stay within limits
-            if hasattr(self, 'fix_stats'):
-                self.fix_stats(hide_notification=True)
-            # ===== END BOOSTING =====
-            # ===== VIRGINITY & FIRST-TIME STATUS SYSTEM =====
-            # Initialize all virginity/first-time attributes using our comprehensive system
-            initialize_virginity_status(self)
-
-            # Ensure consistency with other attributes
-            if self.hymen:
-                self.vaginal_sex_count = 0
-                self.last_vaginal_sex = -1
-            if self.first_time_oral:
-                self.oral_sex_count = 0
-                self.last_oral_sex = -1
-            if self.first_time_anal:
-                self.anal_sex_count = 0
-                self.last_anal_sex = -1
-            # External cumshot counts should reflect first-time status
-            if self.first_time_boobs:
-                self.boob_sex_count = 0
-                self.last_boob_sex = -1
-            if self.first_time_thighs:
-                self.thigh_sex_count = 0
-                self.last_thigh_sex = -1
-            if self.first_time_ass_cumshot:
-                self.ass_cumshot_count = 0
-                self.last_ass_cumshot = -1
-            if self.first_time_pussy_cumshot:
-                self.pussy_cumshot_count = 0
-                self.last_pussy_cumshot = -1
-            # ===== END VIRGINITY SYSTEM =====
+            vt_apply_init_boost_and_virginity(self)
 
             vt_ensure_girl_attrs(self)
 
@@ -2772,7 +2725,9 @@ init -14 python:
             return max(100 - self.bc_penalty, 0)
 
         def pregnancy_chance(self):
-            if self.effective_fertility() <= 0:  
+            if self.planb_pills > 0:  # SafeDOCK: strict conception block, overrides everything else
+                return 0
+            if self.effective_fertility() <= 0:
                 return 0
             return (self.effective_fertility() / 100) * (100 - self.birthcontrol_efficiency())  # NO PARENTHESES!
 
@@ -2803,6 +2758,68 @@ init -14 python:
             vt_preg_notify(f"{self.first_name} took PregnaVITA (dose {self.prenatal_doses}/{VT_PRENATAL_DOSE_CEILING}) - pregnancy accelerating.", duration=3.0)
             renpy.log(f"VT MOD: {self.first_name} PregnaVITA dose {self.prenatal_doses}, speed {speed}x, due day {self.preg_end_day}")
 
+        def apply_planb_pill(self):
+            # SafeDOCK: a strict, non-stacking 7-day window where conception is fully blocked
+            # (see pregnancy_chance -- returns 0 while planb_pills > 0). Refreshes to a flat 7
+            # on every dose rather than accumulating, per the item's "strict 7-day window" text.
+            self.planb_pills = 7
+            renpy.log(f"VT MOD: {self.first_name} took SafeDOCK - conception blocked for 7 days.")
+
+        def apply_emergency_pill(self, notify=True):
+            # DryDOCK: only effective within the first 14 REAL days of an existing pregnancy
+            # (before she'd ordinarily notice/know -- VT_KNOWS_AFTER_DAYS is 10, also a real-day
+            # threshold, for the same reason). Deliberately NOT preg_progress_days: that field
+            # increments by `speed` (1 + prenatal doses) per day, not by 1, so it can run past 14
+            # well before 14 real days have actually elapsed once PregnaVITA is in play -- using
+            # it here caused a false "no effect" for a genuinely-early, boosted pregnancy. When
+            # effective it's a clean termination with no other effects; too late (or not
+            # pregnant) and it does nothing, matching real-world Plan B odds.
+            # notify=False (used by the covert coffee-slip path, 06_vt_covert_pill.rpy): the
+            # built-in notify below is keyed on HER awareness (knows_pregnant), which is correct
+            # for the open give-medicine flow (her own dialogue carries the secrecy nuance there)
+            # but would leak her pregnancy to the PLAYER here, since a covert slip has no dialogue
+            # to mask it -- the covert caller prints its own player-knowledge-scoped narration
+            # instead.
+            current_day = 0
+            try:
+                current_day = time_manager.total_days
+            except NameError:
+                renpy.log(f"VT MOD ERROR: apply_emergency_pill failed because 'time_manager' is not defined for {self.first_name}.")
+
+            if not self.pregnant or (current_day - self.preg_start_day) > 14:
+                if notify:
+                    vt_preg_notify(f"{self.first_name}'s DryDOCK had no effect.", duration=3.0)
+                renpy.log(f"VT MOD: {self.first_name}'s DryDOCK had no effect (not pregnant or past the 14-day window).")
+                return
+
+            # Capture awareness BEFORE the reset below clears both flags. Only HER awareness
+            # gates whether the notify can say anything concrete: if she doesn't know, the
+            # player-facing message can't either -- a hedge covers "secretly pregnant" and
+            # "wasn't pregnant at all" identically, since nobody in the scene can tell them
+            # apart. Once she knows, the message is a plain confirmation regardless of whether
+            # the player also knows -- her own dialogue (vt_dock_gift_gate,
+            # 04_vt_dock_coercion.rpy) is what carries the secrecy nuance in that case.
+            _she_knew = self.knows_pregnant
+
+            self.pregnant = False
+            self.preg_body = False
+            self.knows_pregnant = False
+            self.player_knows_pregnant = False
+            self.preg_progress_days = 0
+            self.preg_start_day = 0
+            self.preg_end_day = 0
+            self.preg_announce = False
+            self.pregnancy_phase = 0
+            self.prenatal_boost = 0
+            self.prenatal_doses = 0
+
+            if notify:
+                if _she_knew:
+                    vt_preg_notify(f"{self.first_name} is no longer pregnant.", duration=3.0)
+                else:
+                    vt_preg_notify(f"If {self.first_name} were pregnant, she isn't anymore.", duration=3.0)
+            renpy.log(f"VT MOD: {self.first_name}'s pregnancy was terminated by DryDOCK.")
+
         # Create patched daily_update
         def vt_daily_update(self):
             original_daily_update(self)
@@ -2811,10 +2828,14 @@ init -14 python:
             self.had_sex_today = False
             self.having_oral_sex = False
             self.having_vaginal_sex = False
-            
+
             # Fertility boost countdown
             if self.fertility_boost > 0:
                 self.fertility_boost -= 1
+
+            # SafeDOCK countdown
+            if self.planb_pills > 0:
+                self.planb_pills -= 1
 
             # Anal and Oral, all cum is gone by next day
             # technically doesn't really matter, as its more of a temp visual for the day.
@@ -3037,27 +3058,6 @@ init -14 python:
             
             return days_from_cycle_start
    
-        # #Relationals
-        # def vt_relationship_change(self, attribute, amount)-> None:
-            # previous_amount = self.player_relationship[attribute]
-            # new_amount = max(-20, min(100, previous_amount + amount)) 
-            # self.player_relationship[attribute] = new_amount
-            # renpy.log(f"RELATIONSHIP UPDATE: {attribute} changed from {previous_amount} to {self.player_relationship[attribute]}")
-            # # Ensure the change is persisted in the global store
-            # #renpy.store[self].player_relationship[attribute] = self.player_relationship[attribute]
-            # #setattr(person, key, value)
-            # setattr(renpy.store, f"{self}.player_relationship['{attribute}']", new_amount)
-
-        # def vt_seed_relationship_path(self, path, amount)-> None:
-            # previous_amount = self.path_seeds[path]
-            # new_amount =  max(-20, min(100, previous_amount + amount))
-            # # girl.path_seeds = {"slave": 0, "girlfriend": 0, "fwb": 0, "sugarbaby": 0}
-            # self.path_seeds[path] = new_amount
-            # renpy.log(f"RELATIONSHIP UPDATE: {path} changed from {previous_amount} to {self.path_seeds[path]}")
-            # # Ensure the change is persisted in the global store
-            # #renpy.store[self].path_seeds[path] = self.path_seeds[path]
-            # setattr(renpy.store, f"{self}.path_seeds['{path}']", new_amount)
-        
         def boob_description(self):
             # Returns a randomized, flavorful bust descriptor (adjective + noun) based on
             # the girl's physical-appearance trait. Distinguishes natural vs fake; uses a
@@ -3104,6 +3104,8 @@ init -14 python:
         Girl.birthcontrol_efficiency = birthcontrol_efficiency
         Girl.pregnancy_chance = pregnancy_chance
         Girl.apply_prenatal_boost = apply_prenatal_boost
+        Girl.apply_planb_pill = apply_planb_pill
+        Girl.apply_emergency_pill = apply_emergency_pill
         Girl.days_from_ideal_fertility = consistent_days_from_ideal_fertility
         Girl.trigger_pregnancy_followup = trigger_pregnancy_followup
         Girl.trigger_birth_control_followup = trigger_birth_control_followup
@@ -3645,7 +3647,18 @@ init -3 python:
         condom_used = player.condom_active != "raw"
         premium_condom = player.condom_active == "premium"
         cheap_condom = player.condom_active == "cheap"
-        
+
+        # Penetration -> oral ("ATM"): if HER own previous act was vaginal/anal, she reacts to going
+        # straight from your cock's last stop to her mouth FIRST -- before any "she eagerly goes down" line.
+        # Keyed per girl (target_girl), so another participant's act can't arm/disarm her reaction.
+        # "dirty" (real taste) only when he was bare for BOTH acts; otherwise a milder covered reaction.
+        _atm_prev = store.vt_prev_act_by_girl.get(target_girl.id)
+        if action_name in ["blowjob", "sleep_blowjob", "use_mouth"] and _atm_prev and _atm_prev["act"] in ("vaginal", "anal"):
+            _atm_dirty = bool(_atm_prev["raw"]) and not condom_used
+            _atm_line = vt_atm_line(target_girl, _atm_prev["act"], _atm_dirty)
+            if _atm_line:
+                renpy.call("vt_atm_reaction", line=_atm_line)
+
         # --- START: ACTION NOTIFICATION LOGIC ---
         # Notify for the start of the act, if it's not a creampie/facial action.
         if action_name in ["blowjob", "sleep_blowjob", "use_mouth"]:
@@ -5063,6 +5076,27 @@ init -3 python:
 
     database_apply_action_impacts_hooks.append(vt_catch_anal_creampie)
 
+    # Record the just-performed act (category + whether he was raw), PER GIRL, for the penetration->oral
+    # reaction. Registered FIRST (insert 0) so it runs BEFORE the catch-hooks -- critical, because each
+    # catch-hook (vt_catch_oral_sex / _anal_sex / ...) ends by calling renpy.call() for its narration, and
+    # renpy.call from inside a hook UNWINDS the impact-hook loop, so ANY later hook is skipped. A recorder
+    # appended LAST therefore never runs for a real penetration/oral act. Running first, it "shifts" the
+    # girl's act history: her previous LAST act becomes her PREVIOUS act (what vt_catch_oral_sex reads for
+    # the ATM beat), then this act becomes her new LAST act. Reset each encounter (vt_overlay.rpy).
+    def vt_record_prev_act(action_name=None, action_failed=False, target_girl=None, girls_who_got_impacts=None):
+        # B2: a FAILED act never happened, so it must not become the "previous" act (that would arm a
+        # spurious penetration->oral reaction on the next blowjob). Keyed PER GIRL (target_girl is the
+        # acted-on girl, == selected_girl), so another participant's act can't clobber her chain.
+        if getattr(store, "is_during_sex_interaction", False) and not action_failed and isinstance(target_girl, Girl):
+            _gid = target_girl.id
+            store.vt_prev_act_by_girl[_gid] = store.vt_last_act_by_girl.get(_gid)
+            store.vt_last_act_by_girl[_gid] = {
+                "act": vt_categorize_sex_act(action_name),
+                "raw": (player.condom_active == "raw"),
+            }
+
+    database_apply_action_impacts_hooks.insert(0, vt_record_prev_act)
+
     print("VT MOD: Using proper action callback system instead of label callbacks")
 
 
@@ -5101,26 +5135,12 @@ init 999 python:
             renpy.log(f"VT MOD: Processing {len(all_girls)} girls/mothers for VT compatibility")
             
             for girl in all_girls:
-                is_mother = is_mother_character(girl)
-
                 # Full idempotent backfill -- covers every VT attribute, not just a
                 # subset. Critical for mid-save installs: these girls predate the mod,
                 # so the patched __init__ never ran for them. Shared with Girl.__init__.
+                # (The base-mother kids-tally reconciliation now lives INSIDE this call as a
+                # one-time, version-flagged migration -- no per-load re-assertion here.)
                 vt_ensure_girl_attrs(girl)
-
-                # Mother kids reconciliation (runs each load, not a one-time default).
-                if is_mother:
-                    # Base mothers must have at least 1 kid (their daughter)
-                    girl.kids = max(1, girl.kids)
-                    girl.original_daughter = True
-                    # Ensure kids_with_player and kids_with_npc are consistent with total kids
-                    girl.kids_with_player = max(0, girl.kids_with_player)
-                    girl.kids_with_npc = max(0, girl.kids_with_npc)
-                    # Total kids should be at least original daughter + player/npc kids
-                    girl.kids = max(1, girl.kids_with_player + girl.kids_with_npc + (1 if girl.original_daughter else 0))
-                else:
-                    # Students start with 0 kids
-                    girl.kids = max(0, girl.kids_with_player + girl.kids_with_npc)
 
                 renpy.log("VT MOD: Successfully added VT attributes to all girls")
         except Exception as e:

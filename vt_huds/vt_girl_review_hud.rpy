@@ -185,7 +185,7 @@ init 1:
                                             $ vt_img_vag = "_mods/content/elkrose_vt/extra_images/vagmorecum.png"
                                         elif girl.vaginal_cum>=3:
                                             $ vt_tt_vag = f"{{color={menu_text_color_valid}}} Triple the thrill, a taste of indulgence. {{/color}}"
-                                            $ vt_text_vag = "Triple the thrill, a taste of indulgence.."
+                                            $ vt_text_vag = "Triple the thrill, a taste of indulgence."
                                             $ vt_img_vag = "_mods/content/elkrose_vt/extra_images/vagthreecum.png"
                                         elif girl.vaginal_cum>=2:
                                             $ vt_tt_vag = f"{{color={menu_text_color_valid}}} Double the delight, a tease of excess. {{/color}}"
@@ -196,7 +196,7 @@ init 1:
                                             $ vt_text_vag = "A tantalizing whisper, a hint of forbidden pleasure."
                                             $ vt_img_vag = "_mods/content/elkrose_vt/extra_images/vagonecum.png"
                                         else:
-                                            $ vt_tt_vag = f"{{color={menu_text_color_valid}}} A spotless canvas, untouched by passion.! {{/color}}"
+                                            $ vt_tt_vag = f"{{color={menu_text_color_valid}}} A spotless canvas, untouched by passion! {{/color}}"
                                             $ vt_text_vag = "A spotless canvas, untouched by passion!"
                                             $ vt_img_vag = "_mods/content/elkrose_vt/extra_images/none.png"
                                         $ vt_tt_vag +=f"\n Cum:{girl.vaginal_cum}"
@@ -223,7 +223,7 @@ init 1:
                                 imagebutton:
                                     idle "_mods/content/elkrose_vt/extra_images/fertilitypills50.png"
                                     action NullAction()
-                                    tooltip f"{{color={menu_text_color_valid}}} FertiBOOST Active!, good for {girl.fertility_boost} more {days_rem_text}! {{/color}}"
+                                    tooltip f"{{color={menu_text_color_valid}}} FertiBOOST Active! Good for {girl.fertility_boost} more {days_rem_text}! {{/color}}"
                             #PregnaVITA
                             if girl.prenatal_boost >= 1:
                                 $ thereareitems = True
